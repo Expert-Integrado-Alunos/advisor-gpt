@@ -17,21 +17,23 @@ Sete rodadas adversariais reais do GPT-6 Astra sobre a própria skill (esforço 
 
 ## Onde está a skill
 
-A skill vive no marketplace privado de skills do autor (plugin `lab`, `skills.ericluciano.com.br`). Este repositório publica a página que explica o funcionamento; ele não contém a skill, credenciais nem dados de uso real além dos números de exemplo do recibo.
+Aqui. Este repositório **é** a skill: `SKILL.md` na raiz, `scripts/` (revisar, implementar, gate de segredo, recibo e suítes de teste) e `reference/`. A pasta `docs/` é a página pública. Nenhum plugin, nenhuma central: o Claude Code lê qualquer pasta com `SKILL.md` dentro de `~/.claude/skills`.
 
-## Instalar (alunos da Mentoria Automações Inteligentes)
+## Instalar
 
-A skill é distribuída pela central de plugins da mentoria, um repositório privado da organização `Expert-Integrado-Alunos` (só alunos têm acesso). No Claude Code, um comando de cada vez:
-
-```
-/plugin marketplace add Expert-Integrado-Alunos/catalogo-mentoria
-```
+Um comando, na pasta de skills do Claude Code (mac, Linux ou Git Bash):
 
 ```
-/plugin install advisor-gpt@mentoria
+git clone https://github.com/ericlucianoferreira/advisor-gpt "$HOME/.claude/skills/advisor-gpt"
 ```
 
-Reinicie o Claude Code e chame com `roda o advisor`. Guia completo em linguagem leiga: `desenvolvimento/advisor-gpt/README.md` dentro da central. Pré-requisitos: Codex CLI instalado e logado pela assinatura ChatGPT, Node.js 20+, Git.
+No Windows (PowerShell):
+
+```
+git clone https://github.com/ericlucianoferreira/advisor-gpt "$env:USERPROFILE\.claude\skills\advisor-gpt"
+```
+
+Reinicie o Claude Code e chame com `roda o advisor` (ou "pede a opinião do GPT", "valida isso com o Astra"). Atualizar: `git pull` na mesma pasta.
 
 ## Requisitos pra rodar (quem tem a skill)
 
