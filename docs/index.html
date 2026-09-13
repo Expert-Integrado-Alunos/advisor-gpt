@@ -195,6 +195,17 @@ section{padding:clamp(72px,8vw,112px) 0;position:relative}
 .pill{font-family:var(--mono);font-size:13px;padding:10px 16px;border-radius:999px;background:var(--glass);border:1px solid var(--hair);color:var(--ink-2);transition:border-color .6s var(--ease),color .6s var(--ease),transform .6s var(--ease)}
 .pill:hover{border-color:var(--hair-2);color:var(--ink);transform:translateY(-2px)}
 
+/* instalar */
+.install{padding:clamp(20px,3vw,34px);display:grid;gap:14px}
+.install .cmd{display:grid;gap:8px}
+.install .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mint)}
+.install .row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.install .row code{flex:1;min-width:0;font-size:14.5px;padding:12px 16px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid var(--hair);color:var(--ink);overflow-x:auto;white-space:nowrap}
+.install .copy{font-family:var(--mono);font-size:12px;padding:0 16px;border-radius:12px;border:1px solid var(--hair-2);background:var(--glass);color:var(--ink-2);cursor:pointer;transition:background .5s var(--ease),color .5s var(--ease),border-color .5s var(--ease)}
+.install .copy:hover{background:var(--glass-2);color:var(--ink)} .install .copy.ok{background:var(--mint);color:#06110d;border-color:var(--mint)}
+.install .note{font-size:14px;color:var(--ink-3);margin-top:6px} .install .note a{color:var(--ink-2);border-bottom:1px solid var(--hair-2)} .install .note code{font-size:.85em}
+@media (max-width:520px){.install .row code{font-size:13px;padding:11px 12px}.install .copy{padding:10px 14px}}
+
 /* CTA final + footer */
 .final{padding:clamp(60px,8vw,110px) clamp(24px,5vw,72px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
 .final h2{max-width:26ch} .final .sub b{color:var(--ink);font-weight:600}
@@ -220,6 +231,7 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
     <a class="lk" href="#recibo">Recibo</a>
     <a class="lk" href="#implementar">GPT escreve</a>
     <a class="lk" href="#garantias">Segurança</a>
+    <a class="lk" href="#instalar">Instalar</a>
     </span>
     <a class="cta" href="https://github.com/ericlucianoferreira/advisor-gpt" rel="noopener">GitHub <i>↗</i></a>
   </div>
@@ -235,8 +247,9 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
       <p class="lead rv" style="--d:160ms">Chama o <b>GPT-6 Astra</b>, pelo Codex, pra tentar quebrar a entrega que o Claude acabou de fazer. Ele só lê. Nada sai da máquina sem passar por uma varredura de senha e chave. Cada achado é reproduzido antes de virar mudança, e você recebe o recibo do que custou. <span class="more">Com o seu OK, o GPT <b>implementa no mesmo repositório</b> sob contrato.</span></p>
       <div class="ctas rv" style="--d:240ms">
         <a class="btn primary" href="https://expertintegrado.com.br/?utm_source=advisor-gpt&amp;utm_medium=pagina&amp;utm_campaign=hero">Quero isso na minha operação <i>↗</i></a>
+        <a class="btn ghost" href="#instalar">Instalar <i>↓</i></a>
         <a class="lk2" href="#fluxo">Ver como funciona <span>↓</span></a>
-        <span class="dest">Leva ao site da Expert Integrado · Mentoria Automações Inteligentes</span>
+        <span class="dest">Verde: site da Expert Integrado · Mentoria Automações Inteligentes. Instalar: só pra alunos.</span>
       </div>
       <div class="proof rv" style="--d:320ms">
         <div><span class="n" data-count="7">7</span><span class="l">rodadas reais do GPT-6 sobre a própria skill</span></div>
@@ -428,6 +441,22 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
   </div>
 </section>
 
+<section id="instalar">
+  <div class="wrap">
+    <div class="head rv">
+      <span class="eyebrow">09 · instalar</span>
+      <h2>Dois comandos no Claude Code. <em>Só pra quem é aluno.</em></h2>
+      <p class="sub">A skill é distribuída pela central de plugins da Mentoria Automações Inteligentes, um repositório privado que só alunos acessam. Precisa do Codex CLI instalado e logado pela sua assinatura ChatGPT na mesma máquina. Se você não é aluno, o botão verde lá em cima é o caminho.</p>
+    </div>
+    <div class="shell rv" style="--d:120ms"><div class="core install">
+      <div class="cmd"><span class="k">1 · conectar a central (uma vez por máquina)</span><div class="row"><code id="c1">/plugin marketplace add Expert-Integrado-Alunos/catalogo-mentoria</code><button class="copy" data-copy="c1" type="button">copiar</button></div></div>
+      <div class="cmd"><span class="k">2 · instalar a skill</span><div class="row"><code id="c2">/plugin install advisor-gpt@mentoria</code><button class="copy" data-copy="c2" type="button">copiar</button></div></div>
+      <div class="cmd"><span class="k">3 · reiniciar o Claude Code e chamar</span><div class="row"><code id="c3">roda o advisor</code><button class="copy" data-copy="c3" type="button">copiar</button></div></div>
+      <p class="note">Guia completo, em linguagem leiga, no <a href="https://github.com/Expert-Integrado-Alunos/catalogo-mentoria/tree/main/desenvolvimento/advisor-gpt" rel="noopener">README do pacote</a> (acesso de aluno). Pré-requisitos: Claude Code, Codex CLI (<code>npm i -g @openai/codex</code> + <code>codex login</code>), Node.js 20+, Git.</p>
+    </div></div>
+  </div>
+</section>
+
 <section id="fim" style="padding-top:0">
   <div class="wrap">
     <div class="shell rv"><div class="core final">
@@ -436,6 +465,7 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
       <p class="sub" style="max-width:56ch">Em sete rodadas sobre a própria skill, o GPT-6 apontou 55 problemas: 52 corrigidos, 3 repassados, 0 inventados. O advisor-gpt nasceu na <b>Mentoria Automações Inteligentes</b>, da Expert Integrado, onde empresários aprendem a construir e operar agentes assim na própria empresa. A skill roda no Claude Code de quem faz a mentoria; o repositório traz a documentação e esta página.</p>
       <div class="ctas" style="margin-top:22px;justify-content:center">
         <a class="btn primary" href="https://expertintegrado.com.br/?utm_source=advisor-gpt&amp;utm_medium=pagina&amp;utm_campaign=vitrine">Quero isso na minha operação <i>↗</i></a>
+        <a class="btn ghost" href="#instalar">Instalar (alunos) <i>↓</i></a>
         <a class="lk2" href="https://github.com/ericlucianoferreira/advisor-gpt" rel="noopener">Ver no GitHub <span>↗</span></a>
       </div>
     </div></div>
@@ -455,6 +485,11 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
 </div>
 
 <script>
+(function(){
+  document.querySelectorAll('.copy').forEach(function(b){ b.addEventListener('click', function(){ var el=document.getElementById(b.getAttribute('data-copy')); var t=el?el.textContent:''; function ok(){ b.textContent='copiado'; b.classList.add('ok'); setTimeout(function(){ b.textContent='copiar'; b.classList.remove('ok'); },1600); }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(ok,function(){ fallback(); }); } else { fallback(); }
+    function fallback(){ var r=document.createRange(); r.selectNodeContents(el); var sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); try{ document.execCommand('copy'); ok(); }catch(e){} } }); });
+})();
 (function(){
   if(!('IntersectionObserver' in window)) return;               // sem observer = página estática, tudo visível
   document.documentElement.classList.add('js');

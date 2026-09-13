@@ -19,6 +19,20 @@ Sete rodadas adversariais reais do GPT-6 Astra sobre a própria skill (esforço 
 
 A skill vive no marketplace privado de skills do autor (plugin `lab`, `skills.ericluciano.com.br`). Este repositório publica a página que explica o funcionamento; ele não contém a skill, credenciais nem dados de uso real além dos números de exemplo do recibo.
 
+## Instalar (alunos da Mentoria Automações Inteligentes)
+
+A skill é distribuída pela central de plugins da mentoria, um repositório privado da organização `Expert-Integrado-Alunos` (só alunos têm acesso). No Claude Code, um comando de cada vez:
+
+```
+/plugin marketplace add Expert-Integrado-Alunos/catalogo-mentoria
+```
+
+```
+/plugin install advisor-gpt@mentoria
+```
+
+Reinicie o Claude Code e chame com `roda o advisor`. Guia completo em linguagem leiga: `desenvolvimento/advisor-gpt/README.md` dentro da central. Pré-requisitos: Codex CLI instalado e logado pela assinatura ChatGPT, Node.js 20+, Git.
+
 ## Requisitos pra rodar (quem tem a skill)
 
 Claude Code e Codex CLI instalados e logados pela assinatura ChatGPT na mesma máquina. Não roda no navegador nem no celular. No Windows, o Codex precisa de `[windows] sandbox` configurado no `config.toml`.
