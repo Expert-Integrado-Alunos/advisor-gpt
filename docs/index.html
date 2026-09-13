@@ -196,8 +196,9 @@ section{padding:clamp(72px,8vw,112px) 0;position:relative}
 .pill:hover{border-color:var(--hair-2);color:var(--ink);transform:translateY(-2px)}
 
 /* instalar */
-.install{padding:clamp(20px,3vw,34px);display:grid;gap:14px}
-.install .cmd{display:grid;gap:8px}
+.install{padding:clamp(20px,3vw,34px);display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.install .cmd{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
+.install .row{min-width:0}
 .install .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mint)}
 .install .row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
 .install .row code{flex:1;min-width:0;font-size:14.5px;padding:12px 16px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid var(--hair);color:var(--ink);overflow-x:auto;white-space:nowrap}
