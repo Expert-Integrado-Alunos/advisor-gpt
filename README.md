@@ -1,6 +1,6 @@
 # advisor-gpt
 
-**[→ Como funciona o advisor-gpt](https://expert-integrado-ferramentas.github.io/advisor-gpt/)** — a página do projeto, com o sistema explicado visualmente.
+**[→ Como funciona o advisor-gpt](https://expert-integrado-alunos.github.io/advisor-gpt/)** — a página do projeto, com o sistema explicado visualmente.
 
 Skill do [Claude Code](https://claude.com/claude-code) que chama um modelo de **outro fornecedor** (GPT-6 Astra, pelo [Codex CLI](https://github.com/openai/codex) e a assinatura ChatGPT de quem usa) pra dar uma segunda opinião adversarial sobre uma entrega ANTES de declarar "pronto" — código num repositório, página, deck, plano, documento. E, quando o dono escolhe o motor ("faz isso com o GPT"), deixa o GPT implementar **no mesmo repositório**, sob um contrato que o script impõe e confere.
 
@@ -24,13 +24,13 @@ Aqui. Este repositório **é** a skill: `SKILL.md` na raiz, `scripts/` (revisar,
 Um comando, na pasta de skills do Claude Code (mac, Linux ou Git Bash):
 
 ```
-git clone https://github.com/Expert-Integrado-Ferramentas/advisor-gpt "$HOME/.claude/skills/advisor-gpt"
+git clone https://github.com/Expert-Integrado-Alunos/advisor-gpt "$HOME/.claude/skills/advisor-gpt"
 ```
 
 No Windows (PowerShell):
 
 ```
-git clone https://github.com/Expert-Integrado-Ferramentas/advisor-gpt "$env:USERPROFILE\.claude\skills\advisor-gpt"
+git clone https://github.com/Expert-Integrado-Alunos/advisor-gpt "$env:USERPROFILE\.claude\skills\advisor-gpt"
 ```
 
 Reinicie o Claude Code e chame com `roda o advisor` (ou "pede a opinião do GPT", "valida isso com o Astra"). Atualizar: `git pull` na mesma pasta.
