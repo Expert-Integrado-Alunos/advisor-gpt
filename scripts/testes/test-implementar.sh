@@ -96,7 +96,8 @@ chk "diff gravado fora do repo com o arquivo novo" "grep -q 'NOVO: src/NOVO.md' 
 chk "meta marca fake e tokens 1050" "grep -q '\"fake\": true' \"$META\" && grep -q '\"total_tokens\": 1050' \"$META\""
 LEDGER="$W/casa/ledger/$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).id)' "$AUT").json"
 chk "livro (ledger) fora do JSON registra inicio, termino e o que foi tocado" "grep -q '\"terminada\": \"' \"$LEDGER\" && grep -q 'src/NOVO.md' \"$LEDGER\""
-CFG="${CODEX_HOME:-$HOME/.codex}/config.toml"
+# mesmo homedir que o script (os.homedir() = USERPROFILE no Windows; HOME sozinho diverge quando a suite roda com HOME falso)
+CFG="${CODEX_HOME:-$(node -e 'process.stdout.write(require("os").homedir())')/.codex}/config.toml"
 if [ "$(uname -o 2>/dev/null)" = "Msys" ] && [ -f "$CFG" ] && grep -q '^\[windows\]' "$CFG" && sed -n '/^\[windows\]/,/^\[/p' "$CFG" | grep -q '^sandbox'; then
   chk "comando do codex espelha windows.sandbox do config.toml" "grep -q 'windows.sandbox=' \"$META\""
 else

@@ -10,7 +10,7 @@ Objetivo: distribuir aberta a skill `advisor-gpt` do Claude Code (segunda opini�
 - Fora: credenciais, dados de uso real, nomes de clientes/colaboradores, caminhos de máquina. Repo é PÚBLICO: gate antes de todo commit.
 
 ## Fonte da verdade e sincronização
-- A skill é desenvolvida em `ericluciano-skills/plugins/lab/skills/advisor-gpt` (plugin `lab`, privado) e COPIADA pra cá a cada versão publicada: `SKILL.md`, `scripts/`, `reference/` idênticos (a versão é a do plugin `lab`; ex.: 4.50.1). O `SKILL.md` acha os scripts tanto no cache do plugin quanto em `~/.claude/skills/advisor-gpt` (linha `find` com os dois caminhos).
+- A skill é desenvolvida em `ericluciano-skills/plugins/lab/skills/advisor-gpt` (plugin `lab`, privado) e COPIADA pra cá a cada versão publicada: `SKILL.md`, `scripts/`, `reference/` idênticos (a versão é a do plugin `lab`; ex.: 4.50.2). O `SKILL.md` acha os scripts tanto no cache do plugin quanto em `~/.claude/skills/advisor-gpt` (linha `find` com os dois caminhos).
 - A página (`docs/index.html`) é gerada em `C:\tmp\advisor-gpt-vitrine\src\` (`index.src.html` + `build.mjs` embute as fontes; `shot.py` captura; `og.py` gera o og.png) e copiada pra `docs/`. Fonte da página fica fora do repo de propósito (fontes em base64 pesam).
 
 ## Comandos
