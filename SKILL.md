@@ -69,7 +69,7 @@ modelo, não do prompt. As duas se somam; não se substituem.
 | Git (modos repo/branch) | `git -C "<pasta>" rev-parse --show-toplevel` | Usar modo `pasta` ou `arquivo` |
 | Claude Monitor (opcional) | `~/.claude/logs/context-tray-accounts.json` existe | Recibo sai sem a parte da conta Claude ("sem dado"), não bloqueia |
 
-Descobrir os scripts (nunca chumbar versão de cache; vale pro plugin `lab` e pro clone solto em `~/.claude/skills/advisor-gpt`, repositório público `github.com/ericlucianoferreira/advisor-gpt`):
+Descobrir os scripts (nunca chumbar versão de cache; vale pro plugin `lab` e pro clone solto em `~/.claude/skills/advisor-gpt`, repositório público `github.com/Expert-Integrado-Ferramentas/advisor-gpt`):
 
 ```bash
 S="$(find "${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins}" "$HOME/.claude/skills" -path '*/advisor-gpt/scripts/revisar.mjs' 2>/dev/null | sort -V | tail -n1)"
