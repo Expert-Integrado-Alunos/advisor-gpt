@@ -10,6 +10,7 @@
 // Opções:
 //   --modelo M      padrão gpt-6-astra (explícito: não depende do ~/.codex/config.toml)
 //   --esforco E     none|minimal|low|medium|high|xhigh|max — padrão max (idem)
+//   --max-embutidos N  teto de arquivos embutidos no prompt (modo pasta/--arquivos; padrão 40); o excedente é AVISADO
 //   --saida DIR     pasta dos artefatos (padrão C:/tmp); cada execução ganha um sufixo único
 //   --acesso-repo   deixa o Codex LER a árvore inteira do alvo (padrão: ele só vê o pacote auditado).
 //   --imagens       com --acesso-repo, copia também .png/.jpg/.jpeg/.webp/.gif (≤ 5 MB) pra cópia, pra revisão VISUAL
@@ -35,6 +36,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { contarExecucoes } from "./rollout.mjs"; // classificação dos resultados de ferramenta (testada em testes/test-rollout.sh)
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const GATE = path.join(AQUI, "gate-segredo.sh");
@@ -48,6 +50,11 @@ const esforco = opt("esforco") || "max";
 const saida = opt("saida") || "C:/tmp"; const dry = flag("dry"); const acessoRepo = flag("acesso-repo"); const comImagens = flag("imagens");
 const IMG = /\.(png|jpe?g|webp|gif)$/i;
 const arquivosOpt = opt("arquivos");
+// Teto de arquivos EMBUTIDOS no prompt (modo pasta/--arquivos). Incidente de 20/09/2026: pacote de 103 arquivos revisou só os 40
+// primeiros e ninguém viu — o aviso ia só pro GPT, dentro do pacote. Agora o corte sai no stderr, no meta e no recibo.
+const MAX_EMBUTIDOS_PADRAO = 40;
+const maxEmbutidos = opt("max-embutidos") == null ? MAX_EMBUTIDOS_PADRAO : Number(opt("max-embutidos"));
+let naoEmbutidos = []; // caminhos relativos que ficaram fora do prompt (modo pasta)
 const ESFORCOS = new Set(["none", "minimal", "low", "medium", "high", "xhigh", "max"]);
 
 function falha(msg, code = 2) { process.stderr.write(`ERRO: ${msg}\n`); process.exit(code); }
@@ -56,6 +63,7 @@ if (!alvo) falha("--alvo obrigatório");
 if (!focoPath || !fs.existsSync(focoPath)) falha("--foco <arquivo existente> obrigatório (Passo 2)");
 if (modo === "branch" && !base) falha("--base <ref> obrigatório no modo branch");
 if (!ESFORCOS.has(esforco)) falha(`--esforco inválido: ${esforco} (none|minimal|low|medium|high|xhigh|max)`);
+if (!Number.isInteger(maxEmbutidos) || maxEmbutidos < 1) falha(`--max-embutidos inválido: ${opt("max-embutidos")} (inteiro >= 1; padrão ${MAX_EMBUTIDOS_PADRAO})`);
 if (!fs.existsSync(GATE)) falha(`gate-segredo.sh não encontrado ao lado deste script (${GATE})`);
 if (!fs.existsSync(saida)) fs.mkdirSync(saida, { recursive: true });
 
@@ -69,11 +77,14 @@ function git(argv, cwd) {
   return r.stdout;
 }
 function secao(titulo, corpo) { return `\n### ${titulo}\n\n${corpo.trim() ? corpo : "(vazio)"}\n`; }
+const truncados = []; // { arquivo, chars, embutidos } — conteúdo cortado DENTRO do arquivo (rodada 1 da otimização, 20/09/2026: o corte só aparecia no pacote)
 function lerTexto(f, max = 400_000) {
   let b; try { b = fs.readFileSync(f); } catch (e) { falha(`não consegui ler ${f}: ${e.message}`); }
   if (b.includes(0)) return "(binário — não incluído)";
   const s = b.toString("utf8");
-  return s.length > max ? s.slice(0, max) + `\n… (cortado em ${max} caracteres)` : s;
+  if (s.length <= max) return s;
+  truncados.push({ arquivo: f, chars: s.length, embutidos: max });
+  return s.slice(0, max) + `\n… (cortado em ${max} caracteres)`;
 }
 function dentroDe(raiz, f) {
   const R = fs.realpathSync(raiz); let F;
@@ -127,8 +138,15 @@ if (modo === "repo") {
   // caminhos RELATIVOS ao alvo: o prompt não pode apontar pra árvore real (achado do GPT-6, rodada 6)
   const relf = (f) => path.relative(raiz, f).split(path.sep).join("/");
   contexto += secao("Arquivos", arquivos.map((f) => `- ${relf(f)}`).join("\n"));
-  contexto += arquivos.slice(0, 40).map((f) => secao(relf(f), "```\n" + lerTexto(f, 120_000) + "\n```")).join("");
-  if (arquivos.length > 40) contexto += secao("Aviso", `${arquivos.length - 40} arquivo(s) além dos 40 primeiros não foram embutidos${acessoRepo ? "; o Codex pode abri-los pela pasta (sandbox só-leitura)" : " e o Codex NÃO tem acesso a eles (use --acesso-repo ou --arquivos)"}.`);
+  contexto += arquivos.slice(0, maxEmbutidos).map((f) => secao(relf(f), "```\n" + lerTexto(f, 120_000) + "\n```")).join("");
+  naoEmbutidos = arquivos.slice(maxEmbutidos).map(relf);
+  if (naoEmbutidos.length) {
+    contexto += secao("Aviso", `${naoEmbutidos.length} arquivo(s) além dos ${maxEmbutidos} primeiros não foram embutidos${acessoRepo ? "; o Codex pode abri-los pela pasta (sandbox só-leitura)" : " e o Codex NÃO tem acesso a eles (use --acesso-repo ou --arquivos)"}.`);
+    // o executor (não só o GPT) precisa saber do corte: sai no stderr também em --dry
+    const nomes = naoEmbutidos.slice(0, 10).join(", ") + (naoEmbutidos.length > 10 ? ` e mais ${naoEmbutidos.length - 10}` : "");
+    process.stderr.write(`AVISO: ${naoEmbutidos.length} de ${arquivos.length} arquivo(s) FORA do prompt (teto ${maxEmbutidos}): ${nomes}\n`
+      + `       Divida em rodadas temáticas de até ${maxEmbutidos} (ordene a lista pelo que importa) ou suba o teto com --max-embutidos N${acessoRepo ? "; com --acesso-repo o GPT pode abrir os demais, mas nada garante que abra" : ""}.\n`);
+  }
 } else {
   if (!fs.existsSync(alvo) || !fs.statSync(alvo).isFile()) falha(`arquivo inexistente: ${alvo}`);
   raiz = path.dirname(fs.realpathSync(alvo));
@@ -310,11 +328,18 @@ const argvCodex = ["exec", "--json", "-s", "read-only", "--skip-git-repo-check",
 const envCodex = { ...process.env }; for (const k of Object.keys(envCodex)) if (["CODEX_API_KEY", "OPENAI_API_KEY"].includes(k.toUpperCase())) delete envCodex[k]; // Windows: env não distingue caixa
 const meta = {
   stamp, modo, alvo, base: base ?? null, rotulo, arquivos_n: arquivos.length, arquivos: arquivos.slice(0, 200),
+  arquivos_embutidos: modo === "pasta" ? Math.min(arquivos.length, maxEmbutidos) : arquivos.length, arquivos_nao_embutidos: naoEmbutidos, max_embutidos: maxEmbutidos,
+  arquivos_truncados: truncados.map((t) => ({ arquivo: path.relative(raiz, t.arquivo).split(path.sep).join("/"), chars: t.chars, embutidos: t.embutidos })),
+  // preenchidos pelo rollout (rollout.mjs): comandos_gpt = execuções CONCLUÍDAS pelo runtime do Codex (não prova que a entrega foi
+  // testada); comandos_rejeitados = recusadas pelo sandbox; comandos_indeterminados = pendentes ou formato desconhecido;
+  // null = sem rollout (execução desconhecida). 0 concluídos = reprodução só por leitura.
+  comandos_gpt: null, comandos_rejeitados: null, comandos_indeterminados: null, sandbox_helper_falhou: null,
   modelo_pedido: modelo, esforco_pedido: esforco, acesso_repo: acessoRepo, cwd_codex: cwdCodex, copia_arquivos: copiados, copia_ignorados: ignorados, copia_imagens: imagens, foco: focoPath,
   pacote: P("pacote"), prompt: P("prompt"), parecer: P("parecer"), prompt_chars: prompt.length, gate: "aprovado", dry,
   comando: `codex ${argvCodex.join(" ")}`, sandbox_pedido: "read-only", sandbox_real: null, thread_id: null, modelo_real: null, esforco_real: null, tokens: null, rate_limits: null, rate_limits_inicio: null, rate_limits_antes: fotoChatGPTAntes(), inicio_iso: new Date(inicio).toISOString(), claude_inicio: fotoClaude(),
   duracao_s: null, exit_code: null, stderr_tail: null, rollout: null
 };
+if (truncados.length) process.stderr.write(`AVISO: ${truncados.length} arquivo(s) entraram CORTADOS (conteúdo além do teto de caracteres ficou fora): ${meta.arquivos_truncados.slice(0, 10).map((t) => `${t.arquivo} (${t.chars} chars, ${t.embutidos} embutidos)`).join(", ")}${truncados.length > 10 ? ` e mais ${truncados.length - 10}` : ""}\n       Revisão PARCIAL desses arquivos${acessoRepo ? " (com --acesso-repo o GPT pode abrir o resto, mas nada garante que abra)" : ""}; divida o arquivo ou revise o trecho que importa em separado.\n`);
 if (dry) { fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + "\n"); process.stdout.write(`dry-run: gate aprovado; pacote ${P("pacote")}; prompt ${P("prompt")}; meta ${metaPath}\n`); try { fs.rmSync(cwdCodex, { recursive: true, force: true }); } catch { /* cópia temporária */ } process.exit(0); }
 
 const exe = resolverCodex();
@@ -368,12 +393,17 @@ if (meta.thread_id) {
     }
   }
   if (meta.rollout) {
+    const linhasRollout = [];
     for (const line of fs.readFileSync(meta.rollout, "utf8").split("\n")) {
       let o; try { o = JSON.parse(line); } catch { continue; }
+      linhasRollout.push(o);
       const p = o.payload ?? {};
       if (p.type === "token_count") { if (p.info?.total_token_usage) meta.tokens = fundeTokens(p.info.total_token_usage, meta.tokens); if (p.rate_limits) { if (!meta.rate_limits_inicio) meta.rate_limits_inicio = p.rate_limits; meta.rate_limits = p.rate_limits; } }
       if (o.type === "turn_context") { if (p.model) meta.modelo_real = p.model; if (p.effort ?? p.reasoning_effort) meta.esforco_real = p.effort ?? p.reasoning_effort; if (p.sandbox_policy?.type) meta.sandbox_real = p.sandbox_policy.type; }
     }
+    // execução real do GPT: só o cabeçalho do resultado decide (rollout.mjs); "concluído" = o runtime rodou, não = entrega testada
+    const ex = contarExecucoes(linhasRollout);
+    meta.comandos_gpt = ex.concluidos; meta.comandos_rejeitados = ex.recusados; meta.comandos_indeterminados = ex.pendentes + ex.indeterminados; meta.sandbox_helper_falhou = ex.sandbox_falhou; // Windows: codex-windows-sandbox-setup.exe (os error 206)
   }
 }
 fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + "\n");
@@ -382,4 +412,7 @@ if (r.status !== 0 || !fs.existsSync(P("parecer")) || !fs.statSync(P("parecer"))
   process.stderr.write(`ERRO: codex exec saiu com ${r.status}; parecer ausente. stderr: ${meta.stderr_tail ?? "(vazio)"}\nmeta: ${metaPath}\n`);
   process.exit(3);
 }
-process.stdout.write(`parecer: ${P("parecer")}\nmeta: ${metaPath}\nthread: ${meta.thread_id ?? "?"} | ${meta.duracao_s}s | modelo ${meta.modelo_real ?? modelo} esforço ${meta.esforco_real ?? esforco} | tokens: ${meta.tokens?.total_tokens ?? "?"}\n`);
+process.stdout.write(`parecer: ${P("parecer")}\nmeta: ${metaPath}\nthread: ${meta.thread_id ?? "?"} | ${meta.duracao_s}s | modelo ${meta.modelo_real ?? modelo} esforço ${meta.esforco_real ?? esforco} | tokens: ${meta.tokens?.total_tokens ?? "?"}\n`
+  + (naoEmbutidos.length ? `AVISO: ${naoEmbutidos.length} de ${arquivos.length} arquivo(s) ficaram FORA do prompt (teto ${maxEmbutidos}); meta.arquivos_nao_embutidos lista quais.\n` : "")
+  + (truncados.length ? `AVISO: ${truncados.length} arquivo(s) entraram CORTADOS; meta.arquivos_truncados lista quais.\n` : "")
+  + (meta.comandos_gpt == null ? "execução do GPT desconhecida (sem rollout).\n" : meta.comandos_gpt === 0 ? `GPT NÃO concluiu nenhuma execução (${meta.comandos_rejeitados} recusada(s) pelo sandbox, ${meta.comandos_indeterminados} indeterminada(s)${meta.sandbox_helper_falhou ? "; sandbox do Windows falhou" : ""}) — achado "reproduzido" pelo GPT é leitura, não teste.\n` : `GPT concluiu ${meta.comandos_gpt} execução(ões) no runtime do Codex (${meta.comandos_rejeitados} recusada(s), ${meta.comandos_indeterminados} indeterminada(s)${meta.sandbox_helper_falhou ? "; terminal do sandbox do Windows falhou" : ""}) — atividade, não prova de teste da entrega.\n`));

@@ -1,4 +1,4 @@
-> **Publicado pela Expert Integrado — versão 2026-09-14-e5fd6b9.** Cópia pública de `advisor-gpt`, gerada automaticamente a partir da fonte interna (sem histórico) pelo robô publicador. Issues e pull requests aqui não são acompanhados; contato em expertintegrado.com.br.
+> **Publicado pela Expert Integrado — versão 2026-09-20-2cf6e5e.** Cópia pública de `advisor-gpt`, gerada automaticamente a partir da fonte interna (sem histórico) pelo robô publicador. Issues e pull requests aqui não são acompanhados; contato em expertintegrado.com.br.
 
 # advisor-gpt
 

@@ -1,10 +1,10 @@
 {
   "repo": "advisor-gpt",
-  "versao": "2026-09-14-e5fd6b9",
+  "versao": "2026-09-20-2cf6e5e",
   "fonte": "Expert-Integrado-Ferramentas/advisor-gpt",
   "fonte_ref": "main",
-  "fonte_sha": "e5fd6b913b7a2dcaf8e0d68e5bfa82c1a3a6ec3b",
-  "publicado_em": "2026-09-14T02:55:52.520Z",
-  "arquivos": 14,
+  "fonte_sha": "2cf6e5ea4bb7657daa50dace47ab467ae969013a",
+  "publicado_em": "2026-09-20T20:24:20.512Z",
+  "arquivos": 16,
   "publicador": "expert-integrado-publicador"
 }

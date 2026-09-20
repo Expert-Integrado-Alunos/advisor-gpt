@@ -427,7 +427,7 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
       <div class="limit rv"><span class="n">L2</span><p><b>Sandbox não é segredo guardado.</b> Na revisão, o controle que vale é o gate sobre o que entra no pacote; no modo implementar, o GPT lê o repositório inteiro, por isso a árvore passa pelo gate antes — e pastas pesadas (node_modules, dist) ficam fora dessa varredura, por escolha documentada.</p></div>
       <div class="limit rv"><span class="n">L3</span><p><b>Configuração isolada derruba junto o que fazia a ferramenta funcionar.</b> No Windows, ignorar a configuração do usuário rebaixava o sandbox pra só-leitura e o GPT não conseguia nem ler; a skill espelha a única chave necessária e confere, no registro da execução, se a política pedida foi a aplicada.</p></div>
       <div class="limit rv"><span class="n">L4</span><p><b>O revisor também erra.</b> Por isso todo achado é hipótese até reproduzir; nas rodadas de validação, parte dos achados foi repassada a outro componente.</p></div>
-      <div class="limit rv"><span class="n">L5</span><p><b>Duas rodadas por versão; uma implementação por autorização.</b> Depois disso, a decisão de continuar é humana.</p></div>
+      <div class="limit rv"><span class="n">L5</span><p><b>Duas rodadas por versão por padrão; uma implementação por autorização.</b> A terceira rodada só acontece quando o dono pede, uma por pedido.</p></div>
       <div class="limit rv"><span class="n">L6</span><p><b>Teste com dublê não prova isolamento.</b> A suíte offline prova a lógica do contrato; sandbox real, rede e processos filhos só o teste com o Codex de verdade prova, e ele roda antes de cada versão.</p></div>
     </div>
   </div>

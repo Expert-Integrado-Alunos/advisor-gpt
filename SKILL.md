@@ -37,8 +37,14 @@ modelo, não do prompt. As duas se somam; não se substituem.
   `run_in_background: true` (Passo 3).
 - NUNCA entregar ao Eric o parecer bruto do GPT nem um resumo sem os 3 baldes do Passo 4
   (procedente reproduzido / improcedente com prova / não verificável). Parecer sem triagem é ruído.
-- NUNCA passar de 2 rodadas na mesma entrega. Se a 2ª rodada ainda traz achado procedente novo, o
-  problema é a entrega, não a revisão: reportar e parar.
+- NUNCA rodar a 3ª rodada (ou seguinte) na mesma VERSÃO da entrega sem pedido explícito do Eric NAQUELA
+  hora ("roda mais uma", "mais uma rodada", "continua o advisor"). Padrão (Eric, 20/09/2026): até 2
+  rodadas por versão; da 3ª em diante o Claude para, reporta e espera. Cada pedido vale pra 1 rodada.
+  O que conta como versão: a entrega que o Eric pediu ou viu (o pedido original, ou um pedido novo dele
+  de mudança). Corrigir os achados de uma rodada, atualizar o foco ou commitar NÃO abre versão nova —
+  a contagem só reinicia com pedido do Eric. Anotar no foco `RODADA: n/2` e, na extra, `PEDIDO: <frase
+  do Eric, hh:mm>`. A rodada extra diz no report quantos achados recaem sobre a correção da rodada
+  anterior (churn, Passo 4).
 - NUNCA declarar "o GPT aprovou" como prova de pronto. O veredito é insumo; a prova de pronto continua
   sendo a verificação real da entrega (teste, URL de produção, ciclo do Eric).
 - NUNCA imprimir no chat o prompt montado, o rollout do Codex ou qualquer token/chave. O recibo mostra
@@ -52,6 +58,14 @@ modelo, não do prompt. As duas se somam; não se substituem.
   (gpt-6-astra, esforço `max`); o Eric pode pedir outro por chamada ("roda o advisor em esforço médio").
 - SEMPRE reproduzir cada achado e classificar nos 3 baldes antes de mexer em qualquer arquivo.
 - SEMPRE rodar os testes/verificações já existentes da entrega depois de aplicar os procedentes.
+- SEMPRE dizer no report quantos PROCEDENTES tiveram prova `executada` e quantos foram `leitura`, e se o
+  GPT executou algo (`comandos_gpt` do meta; 0 desde que o sandbox do Windows quebrou em 18/09/2026 =
+  "como reproduzir" do parecer é hipótese, não teste). Rodada em que a maioria dos procedentes recai sobre a
+  correção da rodada anterior = churn: recomendar prova executada, não rodada nova.
+- SEMPRE conferir os AVISOS de corte do `revisar.mjs`: modo pasta embute até 40 arquivos (`--max-embutidos N`
+  sobe o teto; `arquivos_nao_embutidos` no meta lista o que ficou fora) e todo arquivo entra até um teto de
+  caracteres (`arquivos_truncados` no meta). Corte não declarado no report = revisão parcial vendida como
+  inteira (incidente de 20/09/2026, 103 arquivos, 2 rodadas).
 - SEMPRE fechar com o recibo do `recibo.mjs` (tokens desta revisão, conta ChatGPT, conta Claude) no
   veredito — é o que o Eric pediu pra saber quanto cada agente gastou.
 - SEMPRE registrar no Brain (`mcp__expert-brain__save_note`, kind `insight`) quando pelo menos 1 achado
@@ -182,8 +196,20 @@ node "$SCRIPTS/revisar.mjs" --modo arquivo --alvo "<arquivo>" --foco "..."
 
 Pra CADA achado do parecer, 1 linha em `C:/tmp/advisor-gpt-triagem-<stamp>.md`:
 
-| # | Achado (1 linha) | Gravidade | Onde reproduzir | Como reproduzi | Balde |
-|---|---|---|---|---|---|
+| # | Achado (1 linha) | Gravidade | Onde reproduzir | Como reproduzi | Prova | Balde |
+|---|---|---|---|---|---|---|
+
+Coluna **Prova** (obrigatória, medida da retrospectiva de 20/09/2026: em 283 rodadas, 813 achados viraram
+PROCEDENTE e só ~3% tinham teste ou comando rodado; o resto foi "li o código e o GPT tem razão"):
+- `executada`: o CENÁRIO do achado rodou e a falha foi OBSERVADA (teste que falha antes e passa depois, comando
+  que dispara o caso de borda, render/captura mostrando o defeito, curl com a resposta errada). A linha da
+  triagem cita o que rodou e o que saiu. Comando que só imprime/inspeciona o fonte, tentativa recusada pelo
+  sandbox e "em memória, sem rodar o script" continuam `leitura`.
+- `leitura`: a linha existe e faz o que o GPT disse, mas ninguém executou o cenário. Vale pra `medium`/`low`;
+  pra `critical`/`high` a regra é tentar `executada` primeiro e, se não der, dizer POR QUE (sem ambiente,
+  sem teste, custo) — nunca omitir. O `revisar.mjs` grava no meta `comandos_gpt` (execuções que o runtime do
+  Codex CONCLUIU — atividade do GPT, não prova de que a entrega foi testada), `comandos_rejeitados` (sandbox
+  recusou) e `comandos_indeterminados`: concluídas = 0 significa que o GPT também só leu.
 
 Baldes (critério, não opinião):
 - **PROCEDENTE**: a reprodução mostrou o problema (linha existe e faz o que o GPT disse; teste falha;
@@ -206,7 +232,13 @@ definição, mesmo que o GPT não soubesse da regra.
 2. Rodar de novo a verificação que a entrega já tinha (teste, script de gate, render, curl). Sem
    verificação existente = dizer isso no report, não inventar uma agora.
 3. Se houve PROCEDENTE `critical` ou `high`: 2ª rodada (Passos 1-3 com foco atualizado, `ENTREGUE`
-   citando o que mudou). Máximo 2 rodadas no total. Só `medium`/`low` = 1 rodada basta.
+   citando o que mudou; `RODADA: 2/2` no foco). Padrão: até 2 rodadas por versão (versão = o que o Eric
+   pediu ou viu; correção decorrente da rodada não reinicia a contagem — regra do bloco NUNCA). Da 3ª em
+   diante SÓ com pedido explícito do Eric, uma rodada por pedido; sem pedido = reportar e parar (a
+   decisão de continuar é dele). Só
+   `medium`/`low` = 1 rodada basta. Rodada em que metade ou mais dos PROCEDENTES recai sobre a
+   correção da rodada anterior = "churn": dizer isso no report e recomendar prova EXECUTADA (teste,
+   comando) da correção antes de outra rodada, em vez de rodada nova.
 
 ### Passo 6 — Recibo e veredito pro Eric (formato executivo)
 
@@ -224,13 +256,14 @@ formato ("sessão 5 h 44% → 46% (+2 pontos); semana ...") quando o `revisar.mj
 início, senão só o % atual. O que esse "a% → b%" É: movimento observado da conta entre a última foto
 anterior à rodada (qualquer sessão do Codex nas 6 h antes) e o fim da rodada — outras sessões da mesma
 conta no período entram na conta. Sem foto anterior = só o % atual, sem delta. Reset da janela no
-meio = "(reset no meio)", sem número. Conta Claude trocada durante a rodada = só o % atual. Com 2 rodadas, rodar 1x por meta e somar tokens e pontos no report.
+meio = "(reset no meio)", sem número. Conta Claude trocada durante a rodada = só o % atual. Com mais de 1 rodada, rodar 1x por meta e somar tokens e pontos no report.
 
 Uma mensagem, teto ~10 linhas:
 - Linha 1: farol. 🟢 = nenhum procedente `critical`/`high` restou; 🟡 = ficou NÃO VERIFICÁVEL que
   depende de alguém; 🔴 = achado procedente que exige decisão do Eric (bloco `🔴 **DECISAO:**` no fim).
 - 1-3 linhas: o que o GPT-6 Astra achou e o que mudou na entrega por causa disso.
-- Bullets: procedentes aplicados (arquivo em `monoespaçado`), improcedentes (1 linha cada, com a prova),
+- Bullets: procedentes aplicados (arquivo em `monoespaçado`; "N com prova executada, M por leitura"),
+  improcedentes (1 linha cada, com a prova),
   não verificáveis (o que falta e de quem depende), fora de escopo (pra quem foi), "o que falta pra
   pronto" na visão do GPT se divergir da do Claude.
 - Recibo: as linhas do `recibo.mjs` (rodadas somadas) + caminho do parecer em `C:/tmp/`.
@@ -316,6 +349,7 @@ Três suítes 100% offline (nenhum byte sai da máquina) + 1 dry-run:
 sh   "$SCRIPTS/testes/test-gate-segredo.sh"   # espera PASS=51 FAIL=0 (25 sabotagens vermelhas)
 sh   "$SCRIPTS/testes/test-recibo.sh"         # espera PASS=12 FAIL=0 (rollout fabricado, fusão por maior total, foto única, reset no meio, delta de cota)
 sh   "$SCRIPTS/testes/test-implementar.sh"    # espera PASS=62 FAIL=0 (Codex FALSO: assinatura adulterada, replay por cópia, trava, `..out`, gate na proposta/árvore/cada arquivo tocado, NUL, commit e hook do GPT, staged, sensíveis ampliados, ignorados sem cópia, desfazer com manifesto)
+sh   "$SCRIPTS/testes/test-rollout.sh"        # espera PASS=10 FAIL=0 (resultados de ferramenta fabricados: concluído / recusado pelo sandbox / pendente / indeterminado)
 node "$SCRIPTS/revisar.mjs" --modo repo --alvo "<um repo com mudança>" --foco "<foco.md>" --dry   # monta prompt + meta sem chamar o Codex
 ```
 

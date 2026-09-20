@@ -213,7 +213,17 @@ if (asJson) { process.stdout.write(JSON.stringify(resultado, null, 2) + "\n"); p
 
 const linhas = [];
 if (meta) {
-  linhas.push(`Revisão: ${meta.rotulo ?? meta.modo ?? "?"}; ${meta.arquivos_n ?? "?"} arquivo(s); ${meta.duracao_s != null ? `${Math.round(meta.duracao_s / 60)} min` : "duração ?"}; modelo ${meta.modelo_real ?? meta.modelo_pedido ?? "?"}, esforço ${meta.esforco_real ?? meta.esforco_pedido ?? "?"}.`);
+  // corte do modo pasta (20/09/2026): "X de Y embutidos" quando nem tudo entrou no prompt; sem corte, só o total
+  const nTrunc = Array.isArray(meta.arquivos_truncados) ? meta.arquivos_truncados.length : 0;
+  const arqs = (meta.arquivos_embutidos != null && meta.arquivos_n != null && meta.arquivos_embutidos < meta.arquivos_n ? `${meta.arquivos_embutidos} de ${meta.arquivos_n} arquivo(s) embutidos (${meta.arquivos_n - meta.arquivos_embutidos} FORA)` : `${meta.arquivos_n ?? "?"} arquivo(s)`) + (nTrunc ? `, ${nTrunc} CORTADO(S) no meio (revisão parcial)` : "");
+  // execução do GPT (rollout.mjs): concluída = o runtime do Codex rodou algo (atividade, não prova de teste da entrega); recusada pelo
+  // sandbox e indeterminada aparecem à parte; sem rollout = desconhecida; meta anterior à 4.57.3 = como antes
+  const rec = meta.comandos_rejeitados || 0, ind = meta.comandos_indeterminados || 0;
+  const extras = [rec ? `${rec} recusada(s) pelo sandbox` : "", ind ? `${ind} indeterminada(s)` : "", meta.sandbox_helper_falhou ? "terminal do sandbox do Windows falhou" : ""].filter(Boolean).join(", ");
+  const exec = meta.comandos_gpt === undefined ? "" : meta.comandos_gpt === null ? "; execução do GPT desconhecida (sem rollout)"
+    : meta.comandos_gpt === 0 ? `; GPT não concluiu nenhuma execução${extras ? ` (${extras})` : ""}: reprodução só por leitura`
+    : `; GPT concluiu ${meta.comandos_gpt} execução(ões) no runtime${extras ? ` (${extras})` : ""}, o que não prova teste da entrega`;
+  linhas.push(`Revisão: ${meta.rotulo ?? meta.modo ?? "?"}; ${arqs}${exec}; ${meta.duracao_s != null ? `${Math.round(meta.duracao_s / 60)} min` : "duração ?"}; modelo ${meta.modelo_real ?? meta.modelo_pedido ?? "?"}, esforço ${meta.esforco_real ?? meta.esforco_pedido ?? "?"}.`);
 }
 if (!codex) {
   linhas.push(`GPT: sem rollout local pro thread ${threadId ?? "(não informado)"} — tokens indisponíveis nesta máquina.`);

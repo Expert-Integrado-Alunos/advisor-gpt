@@ -72,6 +72,29 @@ varre o mesmo conjunto.
 - Esforço: `max` (config do Eric) levou 13 min por rodada em 1-4 arquivos; é o padrão porque a skill
   roda em ponto de "pronto", não a cada edição. `medium`/`high` pra rodadas intermediárias.
 - O que esta skill NÃO é: juiz. É o "outro par de olhos" antes do Eric gastar o dele.
+- Teto de rodadas (Eric, 20/09/2026): padrão até 2 por versão; da 3ª em diante só com pedido explícito, 1
+  rodada por pedido. Antes era "NUNCA passar de 2" e, na prática, 8 das 80 entregas revisadas passaram
+  (Meeting Hub chegou a 127 rodadas): a regra dura não segurava e ainda escondia o custo. Agora o teto é
+  visível e a decisão é do dono.
+- Retrospectiva de 283 rodadas (12–20/09/2026, 392 M tokens, 49 h de GPT, mediana 2,0 M tokens em `max` e
+  121 k em `high`): 1.293 achados, 76% `high`, confiança mediana 0,99 (zero abaixo de 0,8) — o GPT não gradua
+  confiança nem gravidade, o prompt pede "derrube a entrega" e ele sempre entrega `needs-attention` (278 de
+  279 pareceres). Nas triagens: 813 PROCEDENTE, 23 IMPROCEDENTE, 26 NÃO VERIFICÁVEL, 20 FORA. Só ~3% dos
+  procedentes tinham teste/comando rodado; o resto foi confirmação por leitura. Do lado do GPT, 85 pareceres
+  dizem "reproduções derivadas do código, não executadas", e desde 18/09/2026 13:38 o helper
+  `codex-windows-sandbox-setup.exe` falha (os error 206, linha de comando > 32 KB) = o GPT não roda NADA.
+  Experimento inverso (mesmo prompt, Claude cego, entrega dev-background): GPT 8 achados / Claude 10; 4 em
+  comum; o GPT achou 3 `high` que o Claude não viu (SHA com árvore suja, rejeição contradizendo a regra,
+  node_modules velho); o Claude achou 4 `medium` que o GPT não viu. Leitura: a vantagem é sobretudo de
+  PAPEL (revisor externo, sem o viés de quem escreveu) e de prompt, com margem real do GPT em invariantes
+  de estado; a taxa de 97% "procedente" mede concordância de leitura, não defeito comprovado — daí a coluna
+  Prova e o `comandos_gpt`.
+- Rodadas do GPT-6 sobre a própria otimização (20/09/2026, esforço high, `RODADA: 1/2` e `2/2`): r1 = 4 achados,
+  4 procedentes (telemetria contava chamada recusada como execução; truncamento interno do arquivo invisível;
+  `executada` frouxa; unidade da contagem de rodadas ambígua); r2 = 1 achado procedente sobre a correção da r1
+  (classificar pelo CONTEÚDO devolvido contaminava: ler o próprio `revisar.mjs` virava "sandbox falhou") →
+  `scripts/rollout.mjs` decide só pelo cabeçalho do resultado, recusa só no elemento `Script error:`, e
+  `testes/test-rollout.sh` cobre os casos. Teto de 2 rodadas respeitado: uma 3ª só com pedido do Eric.
 
 ## Notas da rodada 5 (GPT-6 Astra, esforço max, 12/09/2026 — 11 achados, todos aplicados)
 
