@@ -41,6 +41,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { modeloIndisponivel, avisoModeloIndisponivel } from "./rollout.mjs";
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const GATE = path.join(AQUI, "gate-segredo.sh");
@@ -51,7 +52,7 @@ const flag = (n) => args.includes(`--${n}`);
 function falha(msg, code = 2) { process.stderr.write(`ERRO: ${msg}\n`); process.exit(code); }
 if (!["autorizar", "executar", "desfazer", "status"].includes(sub ?? "")) falha("uso: implementar.mjs autorizar|executar|desfazer|status ...");
 
-const saida = opt("saida") || "C:/tmp";
+const saida = opt("saida") || os.tmpdir().split(path.sep).join("/");
 if (!fs.existsSync(saida)) fs.mkdirSync(saida, { recursive: true });
 const stamp = new Date().toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo" }).replace(/[-: ]/g, "").slice(0, 14).replace(/^(\d{8})(\d{6})$/, "$1-$2") + "-" + crypto.randomBytes(2).toString("hex");
 const P = (n, ext = "md") => path.join(saida, `advisor-gpt-${n}-${stamp}.${ext}`);
@@ -365,6 +366,7 @@ const meta = {
 const r = spawnSync(exe.cmd, [...exe.pre, ...argvCodex], { cwd: raiz, input: prompt, encoding: "utf8", env: envCodex, maxBuffer: 256 * 1024 * 1024, shell: false });
 meta.duracao_s = Math.round((Date.now() - inicio) / 1000); meta.exit_code = r.status;
 meta.stderr_tail = (r.stderr || "").split("\n").filter((l) => l && !/DEP0190|trace-deprecation|failed to load skill|Reading additional input|rmcp::|oauth::/.test(l)).slice(-5).join("\n") || null;
+meta.modelo_indisponivel = modeloIndisponivel(r.stdout);
 
 // 6) tokens (mesma regra do revisar.mjs: vence a fonte com maior total, sem misturar) + sandbox real pelo rollout
 const CAMPOS_TOKENS = ["input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens"];
@@ -413,7 +415,7 @@ Object.assign(L, { terminada: new Date().toISOString(), head_depois: meta.head_d
 gravarLedger(aut, L);
 
 const rodape = `meta: ${metaPath}\ndesfazer: ${meta.desfazer}\n`;
-if (r.status !== 0) { process.stderr.write(`ERRO: codex saiu com ${r.status}; ${alterados.length} arquivo(s) tocado(s) mesmo assim. stderr: ${meta.stderr_tail ?? "(vazio)"}\n${rodape}`); process.exit(3); }
+if (r.status !== 0) { if (meta.modelo_indisponivel) process.stderr.write(avisoModeloIndisponivel(modelo)); process.stderr.write(`ERRO: codex saiu com ${r.status}; ${alterados.length} arquivo(s) tocado(s) mesmo assim. stderr: ${meta.stderr_tail ?? "(vazio)"}\n${rodape}`); process.exit(3); }
 const sandboxRuim = meta.contrato_violado.find((c) => c.startsWith("sandbox real")); const semResultado = meta.contrato_violado.find((c) => c.startsWith("resultado do GPT"));
 if (sandboxRuim || semResultado) { process.stderr.write(`ERRO: ${[sandboxRuim, semResultado].filter(Boolean).join("; ")}. ${alterados.length} arquivo(s) tocado(s). No Windows, confira [windows] sandbox no config.toml do Codex.\n${rodape}`); process.exit(3); }
 process.stdout.write(`resultado: ${P("resultado-implementar")}\ndiff: ${P("diff-implementar")}\nmeta: ${metaPath}\nthread: ${meta.thread_id ?? "?"} | ${meta.duracao_s}s | modelo ${meta.modelo_real ?? modelo} esforço ${meta.esforco_real ?? esforco} | tokens: ${meta.tokens?.total_tokens ?? "?"}${fake ? " | FAKE" : ""}\nalterados: ${alterados.length}${meta.indice_alterado ? " (com STAGED)" : ""}${meta.arquivos_sensiveis.length ? ` | SENSÍVEIS (mostrar ao dono antes de rodar qualquer coisa): ${meta.arquivos_sensiveis.join(", ")}` : ""}${meta.ignorados_alterados.length ? ` | IGNORADOS alterados: ${meta.ignorados_alterados.join(", ")}` : ""}${meta.ignorados_novos.length ? ` | IGNORADOS novos: ${meta.ignorados_novos.join(", ")}` : ""}${meta.ignorados_sumidos.length ? ` | IGNORADOS sumidos: ${meta.ignorados_sumidos.join(", ")}` : ""}\ngate no que mudou: ${meta.gate_diff}${meta.contrato_violado.length ? `\nCONTRATO VIOLADO: ${meta.contrato_violado.join(" | ")}` : ""}\ndesfazer: ${meta.desfazer}\n`);

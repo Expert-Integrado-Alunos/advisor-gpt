@@ -5,7 +5,7 @@
 D=$(cd "$(dirname "$0")/.." && pwd)
 node - "$D/rollout.mjs" <<'EOF'
 const [modPath] = process.argv.slice(2);
-const { classificarResultado, contarExecucoes } = await import("file:///" + modPath.replace(/^\/([a-z])\//i, "$1:/"));
+const { classificarResultado, contarExecucoes, modeloIndisponivel } = await import("file:///" + modPath.replace(/^\/([a-z])\//i, "$1:/"));
 let pass = 0, fail = 0;
 const t = (nome, got, want) => { const ok = JSON.stringify(got) === JSON.stringify(want); if (ok) pass++; else { fail++; console.log(`FAIL ${nome}: got ${JSON.stringify(got)} want ${JSON.stringify(want)}`); } };
 const el = (s) => ({ type: "input_text", text: s });
@@ -33,6 +33,13 @@ const linhas = [
 ];
 t("contagem", contarExecucoes(linhas), { concluidos: 1, recusados: 1, pendentes: 1, indeterminados: 1, sandbox_falhou: true });
 t("rollout vazio", contarExecucoes([]), { concluidos: 0, recusados: 0, pendentes: 0, indeterminados: 0, sandbox_falhou: false });
+// modelo fora do plano (Codex 0.153.4, login ChatGPT, -m inexistente): o 400 model_not_found vem como "error" e "turn.failed"
+const E400 = JSON.stringify({ type: "error", status: 400, error: { type: "invalid_request_error", message: "The 'modelo-x' model is not supported when using Codex with a ChatGPT account.", code: "model_not_found" } });
+const AVISO_META = { type: "item.completed", item: { id: "item_0", type: "error", message: "Model metadata for `modelo-x` not found. Defaulting to fallback metadata; this can degrade performance and cause issues." } };
+const jl = (evs) => evs.map((o) => JSON.stringify(o)).join("\n");
+t("modelo fora do plano -> true", modeloIndisponivel(jl([{ type: "thread.started", thread_id: "x" }, AVISO_META, { type: "turn.started" }, { type: "error", message: E400 }, { type: "turn.failed", error: { message: E400 } }])), true);
+t("so o aviso de metadata (o modelo rodou) -> false", modeloIndisponivel(jl([AVISO_META, { type: "turn.completed", usage: { input_tokens: 1 } }])), false);
+t("outra falha (cota) -> false", modeloIndisponivel(jl([{ type: "turn.failed", error: { message: "usage_limit_reached: limite de uso atingido" } }])), false);
 console.log(`PASS=${pass} FAIL=${fail}`);
 process.exit(fail ? 1 : 0);
 EOF

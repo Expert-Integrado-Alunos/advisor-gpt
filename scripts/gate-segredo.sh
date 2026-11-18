@@ -30,7 +30,7 @@ MODO="${1:-}"; ALVO="${2:-}"; BASE="${3:-}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 PADROES="$DIR/padroes.txt"
 [ -f "$PADROES" ] || { echo "ERRO: $PADROES ausente" >&2; exit 2; }
-T="${TMPDIR:-/c/tmp}/advisor-gpt-gate-$$"
+T="${TMPDIR:-/tmp}/advisor-gpt-gate-$$"
 ACHADOS="$T.achados"; BRUTO="$T.bruto"; NAOINSP="$T.naoinsp"
 trap 'rm -f "$ACHADOS" "$BRUTO" "$BRUTO.z" "$BRUTO.lst" "$NAOINSP" "$T.err"' EXIT
 : > "$ACHADOS"; : > "$NAOINSP"
@@ -146,11 +146,11 @@ esac
 
 RC=0
 if [ -s "$ACHADOS" ]; then
-  echo "SEGREDO OU DADO SENSIVEL DETECTADO — nada foi enviado. Parar e perguntar ao Eric:"
+  echo "SEGREDO OU DADO SENSIVEL DETECTADO — nada foi enviado. Parar e perguntar ao usuário:"
   cat "$ACHADOS"; RC=1
 fi
 if [ -s "$NAOINSP" ]; then
-  echo "ARQUIVO(S) NAO INSPECIONADO(S) — grande demais, ilegivel, com byte NUL ou sumido; nada disso pode sair sem OK do Eric:"
+  echo "ARQUIVO(S) NAO INSPECIONADO(S) — grande demais, ilegivel, com byte NUL ou sumido; nada disso pode sair sem OK do usuário:"
   cat "$NAOINSP"; RC=1
 fi
 [ "$RC" -eq 0 ] && echo "gate limpo: nenhum padrao de segredo em $MODO $ALVO${BASE:+ (base $BASE)}"

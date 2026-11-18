@@ -10,6 +10,21 @@
 // Limite honesto: "concluído" = o runtime do Codex rodou um script/comando até o fim; NÃO significa que a entrega foi
 // testada (o GPT pode ter rodado um script em memória sobre dados sintéticos).
 
+// erro de modelo fora do plano da conta (Codex com login ChatGPT, 400 model_not_found): chega no stdout do
+// `codex exec --json` como evento "error" e "turn.failed" (stderr vazio). Provado com Codex 0.153.4 e -m inexistente.
+// O aviso de metadata ("Model metadata for ... not found") sozinho não conta: o modelo pode rodar mesmo assim.
+export function modeloIndisponivel(stdout) {
+  for (const linha of String(stdout || "").split("\n")) {
+    let ev; try { ev = JSON.parse(linha); } catch { continue; }
+    const msg = ev?.type === "error" ? ev.message : ev?.type === "turn.failed" ? ev.error?.message : null;
+    if (typeof msg === "string" && /model_not_found|model is not supported|not supported when using Codex/i.test(msg)) return true;
+  }
+  return false;
+}
+export function avisoModeloIndisponivel(modelo) {
+  return `ERRO: o modelo "${modelo}" não está disponível na sua conta ChatGPT (model_not_found). Rode de novo com --modelo <outro>; os modelos da sua conta aparecem no comando /model do Codex.\n`;
+}
+
 const MARCADOR_SANDBOX = /orchestrator_helper_launch_failed|Failed to create unified exec process/;
 
 // elementos de `output` viram lista de strings (string, lista de {text}, ou outro formato = JSON)

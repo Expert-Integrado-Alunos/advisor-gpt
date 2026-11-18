@@ -9,8 +9,9 @@
 //   - Codex:  ~/.codex/sessions/**/rollout-*-<threadId>.jsonl  -> tokens do thread (último total_token_usage)
 //             e o último rate_limits visto (uso da conta ChatGPT: % da janela, reset, plano).
 //   - Claude: ~/.claude.json (oauthAccount.emailAddress = conta ativa do CLI; nada de token) +
-//             ~/.claude/logs/context-tray-accounts.json (gravado pelo Claude Monitor: % da sessão de 5h e
-//             semanal por conta, com horário de reset). Sem o Monitor, a parte do Claude sai como "sem dado".
+//             ~/.claude/logs/context-tray-accounts.json (gravado por um monitor local de uso, se houver: % da sessão de 5h e
+//             semanal por conta, com horário de reset). Sem o arquivo, a linha da conta Claude não aparece;
+//             com o arquivo e sem esta conta, sai "sem dado".
 // Saída: texto em PT-BR pronto pra linha de recibo (ou JSON com --json). Horários em BRT (America/Sao_Paulo).
 // Nunca imprime token, chave ou id de conta além do e-mail.
 
@@ -99,16 +100,18 @@ function lerRollout(file) {
 
 // 3) lado Claude
 function ladoClaude() {
-  const res = { email: null, sessao: null, semanal: null, fable: null, resetSessao: null, resetSemanal: null, frescor: null, fonte: "sem dado" };
+  const res = { email: null, sessao: null, semanal: null, fable: null, resetSessao: null, resetSemanal: null, frescor: null, fonte: "sem dado", monitor: false };
   try {
     const cj = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".claude.json"), "utf8"));
     res.email = cj?.oauthAccount?.emailAddress ?? null;
   } catch { /* sem conta */ }
+  const arqMonitor = path.join(os.homedir(), ".claude", "logs", "context-tray-accounts.json");
+  res.monitor = fs.existsSync(arqMonitor); // sem o arquivo do monitor local, o recibo não mostra a linha da conta Claude
   try {
-    const acc = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".claude", "logs", "context-tray-accounts.json"), "utf8"));
+    const acc = JSON.parse(fs.readFileSync(arqMonitor, "utf8"));
     const a = res.email ? acc[res.email] : null;
     if (a) {
-      res.fonte = "Claude Monitor";
+      res.fonte = "monitor local";
       res.resetSessao = a.reset_session ?? null;
       res.resetSemanal = a.reset_weekly ?? null;
       res.frescor = a.last_usage?.fetched ?? null;
@@ -119,7 +122,7 @@ function ladoClaude() {
         else if (k.includes("week") || k.includes("seman") || k === "weekly") res.semanal = l.percent;
       }
     }
-  } catch { /* sem Monitor */ }
+  } catch { /* sem monitor local */ }
   return res;
 }
 
@@ -194,9 +197,9 @@ function janelasCodex(ini, fim) {
   }
   return out;
 }
-// delta da conta Claude entre a foto do início (meta.claude_inicio, gravada pelo revisar.mjs) e o Monitor agora
+// delta da conta Claude entre a foto do início (meta.claude_inicio, gravada pelo revisar.mjs) e o monitor local agora
 function deltaClaude(ini, agora) {
-  if (!ini?.limits || agora.fonte !== "Claude Monitor") return null;
+  if (!ini?.limits || agora.fonte !== "monitor local") return null;
   // conta trocou = nada comparável (só o % atual); janela que resetou no meio = sem delta (rodada 6)
   if (ini.email !== agora.email) return { sessao: null, semanal: null, fable: null, mesma_conta: false };
   const mapa = {}; for (const l of ini.limits) if (l.key) mapa[l.key] = l;
@@ -231,7 +234,7 @@ if (!codex) {
   const t = resultado.gpt;
   linhas.push(`GPT (${t.model ?? "modelo do config"}): gastou ${fmtInt(t.tokens_total)} tokens (${fmtInt(t.tokens_input_cache)} em cache; saída ${fmtInt(t.tokens_output)}).`);
   if (t.conta) {
-    // formato pedido pelo Eric (12/09/2026): só "de a% foi pra b% (+N ponto)"; sem reset, sem rodapé. Pontos são inteiros
+    // formato fixado em 12/09/2026: só "de a% foi pra b% (+N ponto)"; sem reset, sem rodapé. Pontos são inteiros
     // (o Codex informa assim); revisão pequena = "menos de 1 ponto". Janela curta só aparece se o Codex informar.
     const partes = t.conta.janelas.map((j) => {
       if (j.reset_no_meio) return `${j.nome} ${j.pct_inicio}% → ${j.pct_fim}% (reset no meio)`;
@@ -244,7 +247,8 @@ if (!codex) {
     linhas.push("Conta ChatGPT: sem registro de limite neste thread.");
   }
 }
-if (claude.fonte === "Claude Monitor") {
+// conta Claude: com o arquivo do monitor local, % ou "sem dado"; sem o arquivo, a linha não aparece (fica o que o Codex registra)
+if (claude.fonte === "monitor local") {
   const dl = resultado.claude.delta;
   const seg = (nome, atual, d) => {
     if (atual == null) return null;
@@ -255,7 +259,7 @@ if (claude.fonte === "Claude Monitor") {
   const partes = [seg("sessão 5 h", claude.sessao, dl?.sessao), seg("semana", claude.semanal, dl?.semanal), seg("semana Fable", claude.fable, dl?.fable)].filter(Boolean);
   const aviso = dl && dl.mesma_conta === false ? " (conta trocou durante a revisão)" : "";
   linhas.push(`Conta Claude (${claude.email}): ${partes.length ? partes.join("; ") : "sem percentuais"}${aviso}.`);
-} else {
-  linhas.push(`Conta Claude (${claude.email ?? "?"}): sem dado local de limite (Claude Monitor não gravou esta conta).`);
+} else if (claude.monitor) {
+  linhas.push(`Conta Claude (${claude.email ?? "?"}): sem dado local de limite (nenhum monitor local de uso gravou esta conta).`);
 }
 process.stdout.write(linhas.join("\n") + "\n");

@@ -1,11 +1,11 @@
 #!/bin/sh
 # Suite local do recibo.mjs da skill advisor-gpt. 100% offline: o rollout do Codex e FABRICADO
 # num CODEX_HOME temporario, nenhuma rede e nenhum dado real de conta.
-# Rodar: sh plugins/lab/skills/advisor-gpt/scripts/testes/test-recibo.sh  (espera PASS=12 FAIL=0)
+# Rodar: sh scripts/testes/test-recibo.sh  (espera PASS=15 FAIL=0)
 set -u
 SCRIPTS="$(cd "$(dirname "$0")/.." && pwd)"
 R="$SCRIPTS/recibo.mjs"
-W=/c/tmp/advisor-gate-test/recibo
+W="${TMPDIR:-/tmp}/advisor-gate-test/recibo"
 rm -rf "$W"; mkdir -p "$W/sessions/2026/09/12"
 OK=0; FAIL=0
 chk() { nome="$1"; esp="$2"; shift 2; out="$("$@" 2>&1)"; rc=$?
@@ -26,7 +26,7 @@ CODEX_HOME="$W" chk "json com rollout -> 0" 0 node "$R" --thread "$TH" --json
 echo "--- degradacao graciosa ---"
 CODEX_HOME="$W" chk "thread inexistente -> 0" 0 node "$R" --thread naoexiste-9999
 CODEX_HOME="$W" chk "sem --thread -> 0" 0 node "$R"
-CODEX_HOME=/c/tmp/advisor-gate-test/nao-existe chk "CODEX_HOME ausente -> 0" 0 node "$R" --thread "$TH"
+CODEX_HOME="${TMPDIR:-/tmp}/advisor-gate-test/nao-existe" chk "CODEX_HOME ausente -> 0" 0 node "$R" --thread "$TH"
 
 echo "--- meta parcial (sem total_tokens, sem rollout): total = entrada + saida ---"
 cat > "$W/meta-parcial.json" <<'JSON'
@@ -100,6 +100,20 @@ cat > "$W/sessions/2026/09/12/rollout-2026-09-12T13-58-00-$TH6.jsonl" <<'JSONL'
 JSONL
 out="$(CODEX_HOME="$W" node "$R" --meta "$W/meta-reset.json" 2>&1)"; rc=$?
 if [ "$rc" -eq 0 ] && echo "$out" | grep -q "99% → 5% (reset no meio)"; then OK=$((OK+1)); echo "PASS  reset no meio identificado (exit $rc)"; else FAIL=$((FAIL+1)); echo "FAIL  reset no meio (rc=$rc)"; echo "$out" | head -4 | sed 's/^/      /'; fi
+
+echo "--- conta Claude: sem o arquivo do monitor local a linha NAO aparece; com o arquivo, aparece ---"
+nat() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
+HS="$W/home-sem"; HC="$W/home-com"; HX="$W/home-outra"
+mkdir -p "$HS" "$HC/.claude/logs" "$HX/.claude/logs"
+for h in "$HS" "$HC" "$HX"; do printf '{"oauthAccount":{"emailAddress":"t@t.local"}}\n' > "$h/.claude.json"; done
+printf '{"t@t.local":{"last_usage":{"fetched":"2026-09-12T13:00:00Z","limits":[{"key":"session","percent":12},{"key":"weekly_all","percent":34}]}}}\n' > "$HC/.claude/logs/context-tray-accounts.json"
+printf '{"outra@t.local":{"last_usage":{"limits":[{"key":"session","percent":50}]}}}\n' > "$HX/.claude/logs/context-tray-accounts.json"
+out="$(HOME="$(nat "$HS")" USERPROFILE="$(nat "$HS")" CODEX_HOME="$W" node "$R" --thread "$TH4" 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] && echo "$out" | grep -q "Conta ChatGPT" && ! echo "$out" | grep -q "Conta Claude"; then OK=$((OK+1)); echo "PASS  sem arquivo do monitor: sem linha da conta Claude (exit $rc)"; else FAIL=$((FAIL+1)); echo "FAIL  sem arquivo do monitor: a linha da conta Claude apareceu (rc=$rc)"; echo "$out" | head -4 | sed 's/^/      /'; fi
+out="$(HOME="$(nat "$HC")" USERPROFILE="$(nat "$HC")" CODEX_HOME="$W" node "$R" --thread "$TH4" 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] && echo "$out" | grep -q "Conta Claude (t@t.local): sessão 5 h 12%; semana 34%"; then OK=$((OK+1)); echo "PASS  com arquivo do monitor: linha da conta Claude com % (exit $rc)"; else FAIL=$((FAIL+1)); echo "FAIL  com arquivo do monitor (rc=$rc)"; echo "$out" | head -4 | sed 's/^/      /'; fi
+out="$(HOME="$(nat "$HX")" USERPROFILE="$(nat "$HX")" CODEX_HOME="$W" node "$R" --thread "$TH4" 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] && echo "$out" | grep -q "Conta Claude (t@t.local): sem dado local de limite"; then OK=$((OK+1)); echo "PASS  arquivo do monitor sem esta conta: 'sem dado' (exit $rc)"; else FAIL=$((FAIL+1)); echo "FAIL  arquivo sem esta conta (rc=$rc)"; echo "$out" | head -4 | sed 's/^/      /'; fi
 
 echo "================================"
 echo "PASS=$OK FAIL=$FAIL"

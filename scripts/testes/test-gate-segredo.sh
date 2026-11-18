@@ -1,12 +1,12 @@
 #!/bin/sh
 # Suite local do gate-segredo.sh da skill advisor-gpt. 100% offline, nada sai da maquina.
-# Rodar: sh plugins/lab/skills/advisor-gpt/scripts/testes/test-gate-segredo.sh  (espera PASS=51 FAIL=0)
+# Rodar: sh scripts/testes/test-gate-segredo.sh  (espera PASS=51 FAIL=0)
 # Os padroes de segredo dos casos de sabotagem sao montados por CONCATENACAO de proposito:
 # padrao literal neste arquivo reprovaria no gate estatico do repo de skills.
 set -u
 SCRIPTS="$(cd "$(dirname "$0")/.." && pwd)"
 GATE="$SCRIPTS/gate-segredo.sh"
-W=/c/tmp/advisor-gate-test/w
+W="${TMPDIR:-/tmp}/advisor-gate-test/w"
 rm -rf "$W"; mkdir -p "$W"
 OK=0; FAIL=0
 # prefixos montados por concatenacao: nao escrever literal de padrao de segredo neste arquivo
@@ -39,10 +39,10 @@ t "SABOTAGEM json password -> 1" 1 sh "$GATE" arquivo "$W/sab4.txt"
 printf 'export MEU_%s=abcd1234efgh\n' "$P_AK" > "$W/sab5.txt"
 t "SABOTAGEM export API_KEY -> 1" 1 sh "$GATE" arquivo "$W/sab5.txt"
 
-printf 'TOKEN=$(op read "%s//Agentes Eric/X/credential")\n' "$P_OP" > "$W/opread.txt"
+printf 'TOKEN=$(op read "%s//Cofre/X/credential")\n' "$P_OP" > "$W/opread.txt"
 t "excecao op read -> 0" 0 sh "$GATE" arquivo "$W/opread.txt"
 
-printf 'ref = `%s//Agentes Eric/X/credential`  # ponteiro de cofre, nao segredo
+printf 'ref = `%s//Cofre/X/credential`  # ponteiro de cofre, nao segredo
 ' "$P_OP" > "$W/opsolto.txt"
 t "op:// solto (ponteiro) -> 0" 0 sh "$GATE" arquivo "$W/opsolto.txt"
 
@@ -82,7 +82,7 @@ t "SABOTAGEM json secret com digito/simbolo -> 1" 1 sh "$GATE" arquivo "$W/sab9.
 printf '%s do zip = "TrocaEssa123!"
 ' "$P_PW2" > "$W/sab10.txt"
 t "SABOTAGEM senha em prosa (palavras entre) -> 1" 1 sh "$GATE" arquivo "$W/sab10.txt"
-printf 'PAGINA_%s="<lida da nota do Brain, sem ecoar>"
+printf 'PAGINA_%s="<lida do cofre, sem ecoar>"
 ' "SENHA" > "$W/fp4.txt"
 t "placeholder <...> como valor -> 0" 0 sh "$GATE" arquivo "$W/fp4.txt"
 

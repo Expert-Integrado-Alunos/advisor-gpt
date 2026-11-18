@@ -1,4 +1,4 @@
-> **Publicado pela Expert Integrado — versão 2026-09-20-2cf6e5e.** Cópia pública de `advisor-gpt`, gerada automaticamente a partir da fonte interna (sem histórico) pelo robô publicador. Issues e pull requests aqui não são acompanhados; contato em expertintegrado.com.br.
+> **Publicado pela Expert Integrado — versão 2026-11-18-012639e.** Cópia pública de `advisor-gpt`, gerada automaticamente a partir da fonte interna (sem histórico) pelo robô publicador. Issues e pull requests aqui não são acompanhados; contato em expertintegrado.com.br.
 
 # advisor-gpt
 
@@ -10,12 +10,12 @@ Skill do [Claude Code](https://claude.com/claude-code) que chama um modelo de **
 
 - **Revisão só-leitura** com gate de segredo amarrado ao envio: o que é auditado é o mesmo byte que sai. Segredo detectado = nada sai, e o bloqueio não imprime o trecho.
 - **Triagem por reprodução**: cada achado do GPT é hipótese até o Claude reproduzir na fonte. Três baldes: procedente, fora de escopo, improcedente.
-- **Recibo** por rodada: tokens reais e movimento da cota das duas assinaturas (ChatGPT e Claude), lidos de fontes locais.
+- **Recibo** por rodada: tokens reais e movimento da cota da assinatura ChatGPT (e da Claude, se disponível), lidos de fontes locais.
 - **Modo implementar** (v3): proposta aprovada no chat → autorização assinada de uso único, fora do repositório → gate no prompt e na árvore antes de sair qualquer byte → Codex escreve com sandbox `workspace-write` → conferência do contrato (commit/branch/hook do GPT = violação; gate em cada arquivo tocado, ignorados inclusos; sensíveis destacados) → o dono salva ou desfaz (desfazer com manifesto e prova de inventário).
 
 ## Como foi validada
 
-Sete rodadas adversariais reais do GPT-6 Astra sobre a própria skill (esforço `max` nas decisivas): 55 achados, 52 procedentes e aplicados, 3 repassados a outro componente, 0 inventados. A sétima, sobre o script que escreve no repositório, achou 10 falhas reais numa versão com suíte 100% verde — todas fechadas antes desta publicação. Suítes offline: gate de segredo (51 casos, 25 sabotagens), recibo (12), implementar (62, com Codex falso). Smoke real com o GPT-6 antes de cada versão.
+Sete rodadas adversariais reais do GPT-6 Astra sobre a própria skill (esforço `max` nas decisivas): 55 achados, 52 procedentes e aplicados, 3 repassados a outro componente, 0 inventados. A sétima, sobre o script que escreve no repositório, achou 10 falhas reais numa versão com suíte 100% verde — todas fechadas antes desta publicação. Suítes offline: gate de segredo (51 casos, 25 sabotagens), recibo (15), implementar (64, com Codex falso), leitura do registro do Codex (13). Smoke real com o GPT-6 antes de cada versão.
 
 ## Onde está a skill
 
@@ -39,7 +39,11 @@ Reinicie o Claude Code e chame com `roda o advisor` (ou "pede a opinião do GPT"
 
 ## Requisitos pra rodar (quem tem a skill)
 
-Claude Code e Codex CLI instalados e logados pela assinatura ChatGPT na mesma máquina. Não roda no navegador nem no celular. No Windows, o Codex precisa de `[windows] sandbox` configurado no `config.toml`.
+- Plano pago do ChatGPT com acesso ao Codex (a skill usa a cota dessa assinatura, não a API).
+- Codex CLI instalado e logado por esse plano (`codex login status` mostra `Logged in using ChatGPT`).
+- Node.js 22+, Git e Claude Code, na mesma máquina. Não roda no navegador nem no celular.
+- No Windows, o Codex precisa de `[windows] sandbox` configurado no `config.toml`.
+- Modelo padrão: GPT-6 Astra. Se o seu plano não tiver esse modelo, a revisão para com um aviso pra rodar de novo com `--modelo <outro>`.
 
 ---
 

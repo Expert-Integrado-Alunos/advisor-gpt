@@ -11,7 +11,7 @@
 //   --modelo M      padrão gpt-6-astra (explícito: não depende do ~/.codex/config.toml)
 //   --esforco E     none|minimal|low|medium|high|xhigh|max — padrão max (idem)
 //   --max-embutidos N  teto de arquivos embutidos no prompt (modo pasta/--arquivos; padrão 40); o excedente é AVISADO
-//   --saida DIR     pasta dos artefatos (padrão C:/tmp); cada execução ganha um sufixo único
+//   --saida DIR     pasta dos artefatos (padrão: a pasta temporária do sistema); cada execução ganha um sufixo único
 //   --acesso-repo   deixa o Codex LER a árvore inteira do alvo (padrão: ele só vê o pacote auditado).
 //   --imagens       com --acesso-repo, copia também .png/.jpg/.jpeg/.webp/.gif (≤ 5 MB) pra cópia, pra revisão VISUAL
 //                   (capturas de tela). Pixel não passa pelo gate: só use imagens que você mesmo gerou.
@@ -36,7 +36,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { contarExecucoes } from "./rollout.mjs"; // classificação dos resultados de ferramenta (testada em testes/test-rollout.sh)
+import { contarExecucoes, modeloIndisponivel, avisoModeloIndisponivel } from "./rollout.mjs"; // classificação dos resultados de ferramenta (testada em testes/test-rollout.sh)
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const GATE = path.join(AQUI, "gate-segredo.sh");
@@ -47,7 +47,7 @@ const modo = opt("modo"); const alvo = opt("alvo"); const focoPath = opt("foco")
 const base = opt("base");
 const modelo = opt("modelo") || "gpt-6-astra";
 const esforco = opt("esforco") || "max";
-const saida = opt("saida") || "C:/tmp"; const dry = flag("dry"); const acessoRepo = flag("acesso-repo"); const comImagens = flag("imagens");
+const saida = opt("saida") || os.tmpdir().split(path.sep).join("/"); const dry = flag("dry"); const acessoRepo = flag("acesso-repo"); const comImagens = flag("imagens");
 const IMG = /\.(png|jpe?g|webp|gif)$/i;
 const arquivosOpt = opt("arquivos");
 // Teto de arquivos EMBUTIDOS no prompt (modo pasta/--arquivos). Incidente de 20/09/2026: pacote de 103 arquivos revisou só os 40
@@ -166,7 +166,7 @@ function gate(modoGate, alvoGate) {
   const r = spawnSync("sh", [GATE, modoGate, alvoGate], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (r.status === 0) return;
   process.stderr.write((r.stdout || "") + (r.stderr || ""));
-  if (r.status === 1) falha(`gate-segredo REPROVOU (${modoGate} ${alvoGate}). Nada foi enviado. Parar e perguntar ao Eric.`, 4);
+  if (r.status === 1) falha(`gate-segredo REPROVOU (${modoGate} ${alvoGate}). Nada foi enviado. Parar e perguntar ao usuário.`, 4);
   falha(`gate-segredo falhou operacionalmente (exit ${r.status}) em ${modoGate} ${alvoGate}. Não seguir.`, 2);
 }
 { // --saida dentro do alvo faria a cópia copiar a si mesma (achado do GPT-6, rodada 6)
@@ -267,7 +267,7 @@ function resolverCodex() {
 }
 
 
-// foto da conta Claude ANTES da revisão (Claude Monitor), pra o recibo mostrar quanto a sessão consumiu no período
+// foto da conta Claude ANTES da revisão (monitor local de uso, se houver), pra o recibo mostrar quanto a sessão consumiu no período
 function fotoClaude() {
   try {
     const cj = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".claude.json"), "utf8"));
@@ -353,6 +353,7 @@ const r = spawnSync(exe.cmd, [...exe.pre, ...argvCodex], { cwd: cwdCodex, input:
 meta.duracao_s = Math.round((Date.now() - inicio) / 1000);
 meta.exit_code = r.status;
 meta.stderr_tail = (r.stderr || "").split("\n").filter((l) => l && !/DEP0190|trace-deprecation|failed to load skill|Reading additional input|rmcp::|oauth::/.test(l)).slice(-5).join("\n") || null;
+meta.modelo_indisponivel = modeloIndisponivel(r.stdout);
 const CAMPOS_TOKENS = ["input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens"];
 // funde campo a campo (fonte prioritária por cima, sem apagar campo que só a outra tem); total só quando entrada E saída existem
 // contadores são cumulativos e o registro FINAL é o mais completo/maior: escolhe a fonte com maior total
@@ -409,6 +410,7 @@ if (meta.thread_id) {
 fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + "\n");
 try { fs.rmSync(cwdCodex, { recursive: true, force: true }); } catch { /* cópia temporária; ignora */ }
 if (r.status !== 0 || !fs.existsSync(P("parecer")) || !fs.statSync(P("parecer")).size) {
+  if (meta.modelo_indisponivel) process.stderr.write(avisoModeloIndisponivel(modelo));
   process.stderr.write(`ERRO: codex exec saiu com ${r.status}; parecer ausente. stderr: ${meta.stderr_tail ?? "(vazio)"}\nmeta: ${metaPath}\n`);
   process.exit(3);
 }

@@ -341,7 +341,7 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
       <div class="step gate rv"><span class="n">3</span><span class="tag">gate · sandbox</span><h3>Pacote único, auditado byte a byte, revisão em segundo plano</h3><p>Foco e contexto viram um único pacote; o gate roda sobre esses bytes; só então o pacote vira prompt. O Codex roda em sandbox só-leitura, numa pasta vazia criada pra execução, sem MCPs nem busca web. A revisão leva de 2 a 26 minutos e nunca segura a sessão.</p></div>
       <div class="step rv"><span class="n">4</span><h3>Triagem: reproduzir antes de tocar em arquivo</h3><p>Cada achado é uma hipótese. O Claude abre a linha apontada, reproduz o cenário e classifica em três baldes. Achado que não reproduz não gera mudança.</p></div>
       <div class="step rv"><span class="n">5</span><h3>Aplicar só o procedente e re-verificar</h3><p>Correção de causa raiz, suíte de testes rodando de novo, gate limpo de novo. Houve achado grave procedente? Cabe uma segunda rodada. <b>Máximo de duas rodadas por versão</b>: revisão sem teto vira loop.</p></div>
-      <div class="step rv"><span class="n">6</span><h3>Recibo e veredito, em formato executivo</h3><p>Veredito em poucas linhas mais o recibo: tokens reais desta rodada e movimento da cota das duas assinaturas, ChatGPT e Claude.</p></div>
+      <div class="step rv"><span class="n">6</span><h3>Recibo e veredito, em formato executivo</h3><p>Veredito em poucas linhas mais o recibo: tokens reais desta rodada e movimento da cota da assinatura ChatGPT (e da Claude, se disponível).</p></div>
       <div class="step rv"><span class="n">7</span><h3>Registro</h3><p>Parecer, foco e recibo ficam em arquivo; o aprendizado que sobreviveu à triagem vira nota atômica na base de conhecimento.</p></div>
     </div>
   </div>
@@ -366,7 +366,7 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
     <div class="head rv" style="margin:0">
       <span class="eyebrow">04 · recibo</span>
       <h2>Cota é dinheiro já pago. A skill mostra <em>quanto sobrou.</em></h2>
-      <p class="sub">Quatro linhas lidas de fontes locais reais: o registro da sessão do Codex (tokens e limite da conta ChatGPT, antes e depois) e o monitor de uso do Claude Code. Nada estimado. O formato é o que o dono pediu: quanto gastou e quanto a cota andou, sem hora de reset nem rodapé.</p>
+      <p class="sub">Linhas lidas de fontes locais reais: o registro da sessão do Codex (tokens e limite da conta ChatGPT, antes e depois) e, se disponível, o uso da conta Claude. Nada estimado. O formato é o que o dono pediu: quanto gastou e quanto a cota andou, sem hora de reset nem rodapé.</p>
     </div>
     <div class="shell rv" style="--d:120ms"><div class="core">
       <div class="term-bar"><i></i><i></i><i></i><span style="margin-left:8px">recibo.mjs — rodada 7 · 12/09/2026</span></div>
@@ -374,7 +374,7 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
         <span class="ln"><span class="k">Revisão:</span> artefato em pasta/; 10 arquivo(s); 14 min; modelo gpt-6-astra, esforço max.</span>
         <span class="ln"><span class="k">GPT (gpt-6-astra):</span> gastou <b>604.590 tokens</b> (488.704 em cache; saída 18.429).</span>
         <span class="ln"><span class="k">Conta ChatGPT (pro):</span> semanal 3% → 3% <span class="d">(menos de 1 p.p.)</span>.</span>
-        <span class="ln"><span class="k">Conta Claude:</span> sessão 5 h 36% → 50% <span class="d">(+14 p.p. da cota de sessão)</span>; semana 47% → 49% <span class="d">(+2 p.p.)</span>.<span class="cur"></span></span>
+        <span class="ln"><span class="k">Conta Claude (se disponível):</span> sessão 5 h 36% → 50% <span class="d">(+14 p.p. da cota de sessão)</span>; semana 47% → 49% <span class="d">(+2 p.p.)</span>.<span class="cur"></span></span>
       </div>
     </div></div>
   </div>
@@ -410,8 +410,8 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
       <div class="card rv" style="--d:90ms"><span class="k">bloqueio que não vaza</span><h3>Só origem e linha</h3><p>Quando o gate reprova, a saída não traz o trecho e o agente não abre a linha no chat. O valor fica com o dono, no editor dele.</p></div>
       <div class="card rv" style="--d:60ms"><span class="k">revisor isolado</span><h3>Sandbox por execução</h3><p>Só-leitura, pasta vazia, sem ferramentas herdadas nem busca web. Pra reproduzir, recebe uma cópia só com o texto auditado, sem histórico Git.</p></div>
       <div class="card rv" style="--d:120ms"><span class="k">esforço por chamada</span><h3>Médio no meio, máximo no "pronto"</h3><p>Rodada intermediária em minutos; rodada decisiva em esforço máximo. Quem decide é o dono, não o padrão.</p></div>
-      <div class="card rv" style="--d:180ms"><span class="k">custo visível</span><h3>Duas assinaturas, um recibo</h3><p>Tokens reais e movimento da cota em cada rodada. Cota é dinheiro já pago; a skill mostra quanto sobrou.</p></div>
-      <div class="card w12 rv" style="--d:240ms"><span class="k">suíte própria · 125 casos</span><h3>Sabotagens plantadas têm que ser barradas</h3><p>Gate de segredo: 51 casos, 25 sabotagens vermelhas (chaves, tokens, senhas com e sem dígito, em prosa, em diff, com byte nulo). Recibo: 12 casos com rollout fabricado. Implementar: 62 casos com um Codex falso — autorização adulterada, replay por cópia, trava, commit e hook do GPT, segredo em arquivo ignorado, desfazer com trabalho do dono na árvore. Falso positivo pago em uso real vira caso permanente.</p></div>
+      <div class="card rv" style="--d:180ms"><span class="k">custo visível</span><h3>A cota no recibo</h3><p>Tokens reais e movimento da cota do ChatGPT em cada rodada (e da conta Claude, se disponível). Cota é dinheiro já pago; a skill mostra quanto sobrou.</p></div>
+      <div class="card w12 rv" style="--d:240ms"><span class="k">suíte própria · 130 casos</span><h3>Sabotagens plantadas têm que ser barradas</h3><p>Gate de segredo: 51 casos, 25 sabotagens vermelhas (chaves, tokens, senhas com e sem dígito, em prosa, em diff, com byte nulo). Recibo: 15 casos com rollout fabricado. Implementar: 64 casos com um Codex falso — autorização adulterada, replay por cópia, trava, commit e hook do GPT, segredo em arquivo ignorado, desfazer com trabalho do dono na árvore. Falso positivo pago em uso real vira caso permanente.</p></div>
     </div>
   </div>
 </section>
@@ -477,9 +477,9 @@ footer a{color:var(--ink-2);border-bottom:1px solid var(--hair-2);transition:col
   <div class="wrap">
     <div class="foot">
       <span>Feito pela <a href="https://expertintegrado.com.br">Expert Integrado</a> — IA aplicada a negócios.</span>
-      <span><a href="https://github.com/Expert-Integrado-Alunos/advisor-gpt" rel="noopener">GitHub</a> · <a href="https://skills.ericluciano.com.br">Catálogo de skills do Eric Luciano</a></span>
+      <span><a href="https://github.com/Expert-Integrado-Alunos/advisor-gpt" rel="noopener">GitHub</a></span>
     </div>
-    <p class="prov">Procedência: skill criada por Eric Luciano, educador e mentor de IA aplicada a negócios, da Expert Integrado (expertintegrado.com.br), e distribuída pelo catálogo skills.ericluciano.com.br. Números da página: 7 rodadas adversariais reais do GPT-6 Astra sobre a própria skill entre 12 e 13 de setembro de 2026.</p>
+    <p class="prov">Procedência: skill criada por Eric Luciano, educador e mentor de IA aplicada a negócios, da Expert Integrado (expertintegrado.com.br). Números da página: 7 rodadas adversariais reais do GPT-6 Astra sobre a própria skill entre 12 e 13 de setembro de 2026.</p>
   </div>
 </footer>
 

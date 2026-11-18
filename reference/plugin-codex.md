@@ -20,28 +20,29 @@ plugin openai/codex-plugin-cc v1.0.6 em 12/09/2026.
   português, veredito `approve|needs-attention`, achados `[critical|high|medium|low] [confiança]`),
   roda `codex exec --json -s read-only --skip-git-repo-check -C <cwd> -o <parecer> -` com o prompt por
   stdin e, se pedidos, `-m <modelo>` e `-c model_reasoning_effort="<esforço>"`. Gera em `--saida`
-  (padrão `C:/tmp`): `advisor-gpt-prompt-<stamp>.md`, `advisor-gpt-parecer-<stamp>.md`,
+  (padrão: a pasta temporária do sistema): `advisor-gpt-prompt-<stamp>.md`, `advisor-gpt-parecer-<stamp>.md`,
   `advisor-gpt-meta-<stamp>.json` (thread_id, modelo real, esforço, tokens, rate_limits da conta ChatGPT,
   duração, exit code, cauda do stderr). Exit `0` parecer gravado; `2` uso errado / nada a revisar; `3`
-  Codex falhou (ver `stderr_tail` no meta). `--dry` monta prompt + meta sem chamar o Codex.
+  Codex falhou (ver `stderr_tail` no meta; modelo fora do plano da conta = `modelo_indisponivel: true` no meta
+  e aviso em português pra repetir com `--modelo <outro>`). `--dry` monta prompt + meta sem chamar o Codex.
 - `scripts/recibo.mjs --meta <meta.json> | --thread <id> [--json]` — linha de recibo: revisão (modo,
   arquivos, minutos, modelo, esforço), GPT (tokens desta revisão: total, entrada, cache, saída,
   raciocínio), conta ChatGPT (plano; por janela — semanal e/ou curta — o consumo DESTA revisão em pontos
   de cota: % no 1º `token_count` do rollout vs % no último, reset em BRT, limite atingido; o Codex só
-  informa pontos inteiros), conta Claude da sessão (e-mail ativo do CLI + % sessão 5 h / semana / semana
-  Fable do Claude Monitor e, quando o meta traz `claude_inicio` (foto gravada pelo `revisar.mjs` antes
-  de chamar o Codex), o movimento no período em pontos; sem Monitor = "sem dado"). Só arquivos locais;
+  informa pontos inteiros), conta Claude da sessão (e-mail ativo do CLI; % sessão 5 h / semana / semana
+  Fable só se um monitor local de uso tiver gravado esses dados e, quando o meta traz `claude_inicio` (foto gravada pelo `revisar.mjs` antes
+  de chamar o Codex), o movimento no período em pontos; sem o arquivo do monitor, a linha da conta Claude não aparece). Só arquivos locais;
   nunca imprime token ou chave. Campos novos no meta: `rate_limits_inicio`, `claude_inicio`.
-- `scripts/testes/test-gate-segredo.sh` (49 casos, 23 sabotagens vermelhas) e
-  `scripts/testes/test-recibo.sh` (9 casos: rollout fabricado, meta parcial, fusão temporal, delta de cota). 100% offline.
+- `scripts/testes/test-gate-segredo.sh` (51 casos, 25 sabotagens vermelhas) e
+  `scripts/testes/test-recibo.sh` (15 casos: rollout fabricado, meta parcial, fusão temporal, delta de cota, conta Claude com e sem monitor local). 100% offline.
 
 ## Por que `codex exec` e não o plugin (decisão de 12/09/2026)
 
-O plugin oficial (`/codex:adversarial-review`) foi o motor da v1 (lab 4.41.0) e continua instalado pra
+O plugin oficial (`/codex:adversarial-review`) foi o motor da v1 e continua instalado pra
 uso interativo. Saiu do caminho da skill por três fatos conferidos no fonte v1.0.6:
-1. a revisão do plugin não aceita esforço (só `task` tem `--effort`), e o Eric pediu esforço por chamada;
+1. a revisão do plugin não aceita esforço (só `task` tem `--effort`), e a skill precisa de esforço por chamada;
 2. a thread do plugin (app-server) não deixa rollout nem linha em `state_5.sqlite`: tokens da revisão
-   ficavam invisíveis, e o Eric pediu tokens + estado da conta;
+   ficavam invisíveis, e o recibo precisa de tokens + estado da conta;
 3. `--background` da revisão não destaca o processo (só `task` tem worker), e a revisão morria com a
    sessão do Claude.
 `codex exec` resolve os três: `-c model_reasoning_effort`, rollout em `~/.codex/sessions` com evento
@@ -53,10 +54,10 @@ varre o mesmo conjunto.
 
 | Sintoma | Causa | Ação |
 |---|---|---|
-| `codex: command not found` | Codex CLI ausente | instalar só com OK do Eric (software novo) |
-| `codex login status` sem `Logged in` | sem login ChatGPT | fica com o Eric (`codex login` é interativo); parar |
+| `codex: command not found` | Codex CLI ausente | instalar só com OK do usuário (software novo) |
+| `codex login status` sem `Logged in` | sem login ChatGPT | fica com o usuário (`codex login` é interativo); parar |
 | `revisar.mjs` exit 2 `nada a revisar` | working tree limpo / sem diff contra a base | `--modo branch --base <ref>` ou `--modo pasta` |
-| `revisar.mjs` exit 3 | Codex falhou (rede, cota, modelo inexistente) | ler `stderr_tail` no meta; `rate_limit_reached_type` preenchido = cota da conta ChatGPT esgotada, reportar reset; 2 falhas iguais = parar |
+| `revisar.mjs` exit 3 | Codex falhou (rede, cota, modelo inexistente) | modelo fora do plano = o script avisa: repetir com `--modelo <outro>`; senão ler `stderr_tail` no meta; `rate_limit_reached_type` preenchido = cota da conta ChatGPT esgotada, reportar reset; 2 falhas iguais = parar |
 | `thread-store conflict: already has an active writer` | app Codex Desktop com conversa aberta na mesma pasta | fechar a conversa no app ou esperar 30 s; 2ª falha igual = reportar |
 | Parecer sem arquivo/linha | foco fraco ou alvo grande demais | reduzir o alvo (subpasta, `--arquivos`) e repetir 1x com foco mais específico |
 | Bash em background passou de 25 min | alvo grande ou esforço `max` | matar o job, repetir com `--esforco high` ou alvo menor, 1x |
@@ -69,12 +70,12 @@ varre o mesmo conjunto.
   achados errados (gabarito heurístico reprovando lado que estava certo). Sem reproduzir, o Claude troca
   um viés pelo outro. Na própria construção desta skill (12/09/2026), 2 rodadas do GPT-6 acharam 10
   defeitos procedentes e 3 fora de escopo (outra skill do mesmo repo).
-- Esforço: `max` (config do Eric) levou 13 min por rodada em 1-4 arquivos; é o padrão porque a skill
+- Esforço: `max` (padrão do script) levou 13 min por rodada em 1-4 arquivos; é o padrão porque a skill
   roda em ponto de "pronto", não a cada edição. `medium`/`high` pra rodadas intermediárias.
-- O que esta skill NÃO é: juiz. É o "outro par de olhos" antes do Eric gastar o dele.
-- Teto de rodadas (Eric, 20/09/2026): padrão até 2 por versão; da 3ª em diante só com pedido explícito, 1
+- O que esta skill NÃO é: juiz. É o "outro par de olhos" antes do usuário gastar o dele.
+- Teto de rodadas (20/09/2026): padrão até 2 por versão; da 3ª em diante só com pedido explícito, 1
   rodada por pedido. Antes era "NUNCA passar de 2" e, na prática, 8 das 80 entregas revisadas passaram
-  (Meeting Hub chegou a 127 rodadas): a regra dura não segurava e ainda escondia o custo. Agora o teto é
+  (uma entrega chegou a 127 rodadas): a regra dura não segurava e ainda escondia o custo. Agora o teto é
   visível e a decisão é do dono.
 - Retrospectiva de 283 rodadas (12–20/09/2026, 392 M tokens, 49 h de GPT, mediana 2,0 M tokens em `max` e
   121 k em `high`): 1.293 achados, 76% `high`, confiança mediana 0,99 (zero abaixo de 0,8) — o GPT não gradua
@@ -94,7 +95,7 @@ varre o mesmo conjunto.
   `executada` frouxa; unidade da contagem de rodadas ambígua); r2 = 1 achado procedente sobre a correção da r1
   (classificar pelo CONTEÚDO devolvido contaminava: ler o próprio `revisar.mjs` virava "sandbox falhou") →
   `scripts/rollout.mjs` decide só pelo cabeçalho do resultado, recusa só no elemento `Script error:`, e
-  `testes/test-rollout.sh` cobre os casos. Teto de 2 rodadas respeitado: uma 3ª só com pedido do Eric.
+  `testes/test-rollout.sh` cobre os casos. Teto de 2 rodadas respeitado: uma 3ª só com pedido do usuário.
 
 ## Notas da rodada 5 (GPT-6 Astra, esforço max, 12/09/2026 — 11 achados, todos aplicados)
 
@@ -112,8 +113,8 @@ varre o mesmo conjunto.
   outra só complementa se for o mesmo instante. Caso na suíte do recibo.
 - Após bloqueio do gate: nunca `Read`/`cat` na linha (o valor entraria no histórico). Só `origem:linha`.
 - Desenho v3 ("GPT implementa"): 3 exigências incorporadas antes de virar código — contrato de desfazer
-  verificado, autorização vinculada (hash + consumo único), verificação confinada. Ver
-  `C:\tmp\advisor-gpt-vitrine\fluxo-implementar.html` (rascunho) até virar seção desta skill.
+  verificado, autorização vinculada (hash + consumo único), verificação confinada. Hoje é a
+  seção "Modo implementar" do `SKILL.md`.
 
 ## Notas da rodada 6 (GPT-6 Astra, esforço max, 12/09/2026 — 8 achados, todos aplicados; 2ª e última rodada da versão)
 
@@ -129,7 +130,7 @@ varre o mesmo conjunto.
   sem baseline e com foto única = só o % atual; `resets_at` diferente ou % que caiu = "(reset no meio)"; conta
   Claude trocada = sem delta. É movimento observado da conta, não medição exata do consumo.
 
-## `scripts/implementar.mjs` — modo "GPT implementa" (v3; contrato v2 na lab 4.49.0 após a rodada 7 do GPT-6)
+## `scripts/implementar.mjs` — modo "GPT implementa" (v3; contrato v2 após a rodada 7 do GPT-6)
 
 Casa da skill: `~/.claude/advisor-gpt/` (ou `ADVISOR_GPT_HOME`, só na suíte) — `chave` (32 bytes, HMAC das
 autorizações), `ledger/<id>.json` (livro de execuções: consumo, manifesto do que o GPT tocou, desfazer) e `locks/`.
@@ -168,7 +169,7 @@ autorizações), `ledger/<id>.json` (livro de execuções: consumo, manifesto do
   limpa, inventário (sha ou impressão digital) e `.git` interno; pendência = exit 3 INCOMPLETO com a lista (arquivo
   sem cópia: >50 MB ou pasta pesada). Grava `desfeita` no livro.
 - `status --autorizacao <json>` → autorização + livro + HEAD atual.
-- Suíte `testes/test-implementar.sh` (62 casos, Codex falso; `ADVISOR_GPT_HOME` e `CODEX_HOME` apontam pra pastas da
+- Suíte `testes/test-implementar.sh` (64 casos, Codex falso; `ADVISOR_GPT_HOME` e `CODEX_HOME` apontam pra pastas da
   suíte). O que o fake NÃO prova: isolamento real do sandbox, rede, processos filhos — coberto pelo smoke real.
 - Rodada 7 do GPT-6 (12/09/2026, max, 822 s, 604.590 tokens) sobre a v1 deste script: 10 achados, 10 procedentes
   (JSON adulterável, `..out`, consumo não atômico, proposta antes do gate, gate cego a ignorado/binário, desfazer sem

@@ -1,31 +1,44 @@
-# advisor-gpt (repositório público: a skill + a página)
+# advisor-gpt
 
-Objetivo: distribuir aberta a skill `advisor-gpt` do Claude Code (segunda opinião do GPT-6 Astra pelo Codex, com gate de segredo, triagem por reprodução, recibo e modo implementar sob contrato) e publicar em GitHub Pages a página que explica como ela funciona.
+Skill do Claude Code que pede a segunda opinião do GPT-6 Astra (OpenAI, pelo Codex CLI logado na sua assinatura ChatGPT) sobre uma entrega antes de você declarar "pronto": código, página, deck, plano ou documento. Com o seu OK a uma proposta, ela também deixa o GPT implementar no mesmo repositório, sob contrato conferido pelo script. Este arquivo orienta o Claude Code quando você abre esta pasta (pra entender, testar ou ajustar a skill).
 
-- **Repositorio canonico (fonte):** `github.com/Expert-Integrado-Ferramentas/advisor-gpt` — PRIVADO (decisão do Eric, 13/09/2026). Remote `origin` do clone local.
-- **Cópia pública:** `github.com/Expert-Integrado-Alunos/advisor-gpt` — PÚBLICA, espelho da `main` (remote `alunos`). É ela que serve a página (GitHub Pages em `https://expert-integrado-alunos.github.io/advisor-gpt/`) e a instalação (clone sem login). A cópia é escrita pelo robô `Expert-Integrado-Ferramentas/publicador` (`fontes.json`, `publico: true`; dias úteis 06h17 ou `gh workflow run publicar.yml -R Expert-Integrado-Ferramentas/publicador -f so=advisor-gpt`), que adiciona `.publicacao.json` e um rodapé no README — por isso `git push alunos main` é REJEITADO (não fast-forward) desde 13/09/2026; nunca forçar.
-- Instalação do usuário: clonar `https://github.com/Expert-Integrado-Alunos/advisor-gpt` em `~/.claude/skills/advisor-gpt` (sem plugin, sem marketplace — "repo solto, sem plugin, porque vai ficar aberto"). Atualizar = `git pull`.
-- Histórico: nasceu em `ericlucianoferreira/advisor-gpt` (público), transferido pra Ferramentas em 13/09/2026 e fechado no mesmo dia; a cópia pública ficou na org Alunos (opção C do Eric: fonte privada + cópia pública servindo página e instalação).
+## O que tem aqui
+- `SKILL.md`: a skill em si (passos, regras NUNCA/SEMPRE, modo implementar). É o que o Claude Code lê quando você chama "roda o advisor".
+- `scripts/revisar.mjs`: revisão só-leitura (monta o pacote, passa no gate de segredo, chama o Codex, grava parecer e meta).
+- `scripts/implementar.mjs`: o GPT escreve no repositório, com autorização de uso único, gate antes e depois e desfazer verificado.
+- `scripts/gate-segredo.sh` + `scripts/padroes.txt`: varredura de segredo antes de qualquer byte sair da máquina.
+- `scripts/recibo.mjs` e `scripts/rollout.mjs`: tokens e cota da rodada, lidos do registro local do Codex.
+- `scripts/testes/`: suítes offline.
+- `reference/plugin-codex.md`: contrato dos scripts, erros comuns e notas de design.
+- `docs/`: a página do projeto (`index.html` + `og.png`, sem dependência externa).
 
-## Escopo
-- Dentro: `SKILL.md` (raiz), `scripts/` (revisar.mjs, implementar.mjs, gate-segredo.sh, recibo.mjs, padroes.txt, testes/), `reference/plugin-codex.md`, `docs/index.html` + `docs/og.png` (página, self-contained, zero CDN), `README.md` com o link canônico no topo e a instalação.
-- Fora: credenciais, dados de uso real, nomes de clientes/colaboradores, caminhos de máquina. Repo é PÚBLICO: gate antes de todo commit.
+## Instalar e atualizar
+- Instalar: `git clone https://github.com/Expert-Integrado-Alunos/advisor-gpt "$HOME/.claude/skills/advisor-gpt"` (no PowerShell, destino `"$env:USERPROFILE\.claude\skills\advisor-gpt"`) e reiniciar o Claude Code.
+- Atualizar: `git pull` nesta pasta. Se você mudou algum arquivo aqui, guarde a mudança fora desta pasta antes, senão o `git pull` conflita.
 
-## Fonte da verdade e sincronização
-- A skill é desenvolvida em `ericluciano-skills/plugins/lab/skills/advisor-gpt` (plugin `lab`, privado) e COPIADA pra cá a cada versão publicada: `SKILL.md`, `scripts/`, `reference/` idênticos (a versão é a do plugin `lab`; ex.: 4.50.2). O `SKILL.md` acha os scripts tanto no cache do plugin quanto em `~/.claude/skills/advisor-gpt` (linha `find` com os dois caminhos).
-- A página (`docs/index.html`) é gerada em `C:\tmp\advisor-gpt-vitrine\src\` (`index.src.html` + `build.mjs` embute as fontes; `shot.py` captura; `og.py` gera o og.png) e copiada pra `docs/`. Fonte da página fica fora do repo de propósito (fontes em base64 pesam).
+## Requisitos
+- Plano pago do ChatGPT com acesso ao Codex (a skill usa a cota dessa assinatura, não a API).
+- Codex CLI (`npm i -g @openai/codex`) logado por esse plano: `codex login status` tem que mostrar `Logged in using ChatGPT`. Login por chave de API é recusado de propósito (faturaria a API).
+- Node.js 22+, Git e Claude Code, na mesma máquina (não roda no navegador nem no celular).
+- Windows: rodar pelo Git Bash; o Codex precisa de `[windows] sandbox` configurado no `~/.codex/config.toml`.
+- Modelo padrão `gpt-6-astra`, esforço `max`. Se o seu plano não tiver esse modelo, a revisão para com um aviso pra rodar de novo com `--modelo <outro>`; esforço muda com `--esforco`.
 
-## Comandos
-- Gate antes de commitar: `sh scripts/gate-segredo.sh arvore C:/repos/advisor-gpt` (é o próprio gate da skill).
-- Suítes offline: `sh scripts/testes/test-gate-segredo.sh`, `test-recibo.sh`, `test-implementar.sh`, `test-rollout.sh` (51 / 12 / 62 / 10 casos em 20/09/2026).
-- Publicar: `git push origin main` e rodar o publicador (`gh workflow run publicar.yml -R Expert-Integrado-Ferramentas/publicador -f so=advisor-gpt`, ~1 min); Pages da cópia pública serve `/docs`. Prova: `curl -s --ssl-no-revoke "https://expert-integrado-alunos.github.io/advisor-gpt/?v=$(date +%s)"` com 200 e conteúdo novo, e `/og.png` 200.
+## Como usar
+- No Claude Code: "roda o advisor", "pede a opinião do GPT", "valida isso com o Astra". Pra o GPT implementar: "faz isso com o GPT", e ele só escreve depois que você aprova a proposta no chat.
+- Os arquivos de trabalho (foco, parecer, meta, triagem, proposta) vão pra pasta temporária do sistema; nada é gravado dentro do repositório revisado.
+- Revisão em esforço `max` leva de 10 a 15 minutos; `--esforco medium` fica em 3 a 6.
 
-## Decisões
-- 13/09/2026: repo criado no GitHub pessoal (Pages não existe em repo privado de conta free). Página redesenhada em 7 revisões, aprovada em conselho (rodadas com capturas reais + revisão visual do GPT-6 com `--imagens`).
-- 13/09/2026: repo passa a conter a skill inteira (antes só a página); a cópia no catálogo dos alunos foi revertida no mesmo dia.
-- 20/09/2026 (lab 4.57.3): teto de rodadas vira "padrão 2 por versão, 3ª só a pedido do dono"; triagem ganha coluna Prova (executada/leitura); `revisar.mjs` avisa corte de arquivos e conta execuções do GPT (`scripts/rollout.mjs`). Página: só o limite L5 mudou.
+## Testes (100% offline, nada sai da máquina)
+```bash
+sh scripts/testes/test-gate-segredo.sh   # espera PASS=51 FAIL=0
+sh scripts/testes/test-recibo.sh         # espera PASS=15 FAIL=0
+sh scripts/testes/test-implementar.sh    # espera PASS=64 FAIL=0 (Codex falso)
+sh scripts/testes/test-rollout.sh        # espera PASS=13 FAIL=0
+```
+- Ensaio sem chamar o modelo: `node scripts/revisar.mjs --modo repo --alvo "<repo com mudança>" --foco "<foco.md>" --dry`.
+- Mexeu em `gate-segredo.sh` ou `padroes.txt`: crie o caso na suíte do gate e deixe a suíte verde antes de usar.
 
-## Gotchas
-- Repo PÚBLICO: o hook `pii-pre-push` varre o push; é o comportamento esperado, não desligar.
-- Atualizar a página só em mudança estrutural da skill; a skill em si acompanha cada versão do `lab`.
-- `allowed-tools` do SKILL.md cita `mcp__expert-brain__save_note` (MCP da casa); sem ele a skill só deixa de gravar a nota de aprendizado.
+## Cuidados
+- Tudo que a revisão manda pro GPT sai da sua máquina pra OpenAI. O gate barra padrão de chave e senha; dado sensível sem padrão (financeiro, dado pessoal de cliente) quem segura é você.
+- A revisão nunca escreve (sandbox só-leitura). O GPT só escreve pelo `implementar.mjs`, depois do seu OK.
+- Antes de compartilhar uma cópia desta pasta: `sh scripts/gate-segredo.sh pasta "<esta pasta>"` tem que responder `gate limpo`.

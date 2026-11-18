@@ -1,10 +1,10 @@
 #!/bin/sh
 # test-implementar.sh — suite offline do modo "GPT implementa" (implementar.mjs v2, contrato fechado na rodada 7 do GPT-6)
-# com Codex FALSO (--fake-codex). Rodar: sh plugins/lab/skills/advisor-gpt/scripts/testes/test-implementar.sh  (espera PASS=62 FAIL=0)
+# com Codex FALSO (--fake-codex). Rodar: sh scripts/testes/test-implementar.sh  (espera PASS=64 FAIL=0)
 # Sabotagens por concatenacao (padrao literal reprovaria no gate estatico do repo).
 SCRIPTS="$(cd "$(dirname "$0")/.." && pwd)"
 IMPL="$SCRIPTS/implementar.mjs"
-W=/c/tmp/advisor-gate-test/impl; rm -rf "$W"; mkdir -p "$W/out" "$W/fakes" "$W/casa" "$W/codexhome"
+W="${TMPDIR:-/tmp}/advisor-gate-test/impl"; rm -rf "$W"; mkdir -p "$W/out" "$W/fakes" "$W/casa" "$W/codexhome"
 export ADVISOR_GPT_HOME="$W/casa"
 OK=0; FAIL=0
 t() { nome="$1"; esp="$2"; shift 2; out="$("$@" 2>&1)"; rc=$?
@@ -170,6 +170,16 @@ printf 'bundle v1\n' > "$R/dist/bundle.js"
 AUT4e=$(aut)
 t "fake que NAO grava o resultado (-o) -> 3" 3 env FAKE_SEM_RESULTADO=1 node "$IMPL" executar --autorizacao "$AUT4e" --fake-codex "$W/fakes/nada.js" --saida "$W/out"
 t "desfazer -> 0" 0 node "$IMPL" desfazer --autorizacao "$AUT4e"
+
+echo "--- executar: modelo fora do plano da conta (400 model_not_found no stdout, como o Codex 0.153.4 devolve) ---"
+cat > "$W/fakes/semmodelo.js" <<'JS'
+const E=JSON.stringify({type:"error",status:400,error:{type:"invalid_request_error",message:"The 'modelo-x' model is not supported when using Codex with a ChatGPT account.",code:"model_not_found"}});
+process.stdin.on("data",()=>{}).on("end",()=>{console.log(JSON.stringify({type:"thread.started",thread_id:"fake-thread-2"}));console.log(JSON.stringify({type:"error",message:E}));console.log(JSON.stringify({type:"turn.failed",error:{message:E}}));process.exit(1);});
+JS
+AUT4f=$(aut)
+out="$(node "$IMPL" executar --autorizacao "$AUT4f" --fake-codex "$W/fakes/semmodelo.js" --modelo modelo-x --saida "$W/out" 2>&1)"; rc=$?
+if [ "$rc" -eq 3 ] && echo "$out" | grep -q 'modelo "modelo-x" não está disponível na sua conta ChatGPT' && echo "$out" | grep -q -e '--modelo <outro>'; then OK=$((OK+1)); echo "PASS  modelo fora do plano -> 3 com aviso em portugues pra usar --modelo <outro> (exit $rc)"; else FAIL=$((FAIL+1)); echo "FAIL  modelo fora do plano (rc=$rc)"; echo "$out" | head -4 | sed 's/^/      /'; fi
+t "desfazer -> 0" 0 node "$IMPL" desfazer --autorizacao "$AUT4f"
 
 echo "--- sandbox do Windows: TOML com aspas simples ---"
 printf '[windows]\nsandbox = '"'"'elevated'"'"'\n' > "$W/codexhome/config.toml"
